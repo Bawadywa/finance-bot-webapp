@@ -90,6 +90,10 @@
       background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
     }
     .actions{ justify-self:end; display:flex; gap:0.5rem; }
+    /* In Telegram fullscreen the native close/menu controls sit in the top-right corner
+       and overlap our buttons there — so centre them instead while fullscreen is on. */
+    body.is-fullscreen .topbar{ grid-template-columns:1fr auto 1fr; }
+    body.is-fullscreen .actions{ justify-self:center; }
     .icon-btn{
       display:inline-flex; align-items:center; gap:0.375rem;
       width:auto; margin:0; padding:0.5rem 0.75rem;
@@ -540,25 +544,6 @@
     }
     @media (min-width:1100px){ .kpis{ grid-template-columns:repeat(4,1fr); } }
 
-    /* Dashboard call-to-action */
-    .dash-cta{
-      margin-top:1.25rem; padding:1.625rem 1.25rem; border-radius:1.25rem; text-align:center; min-width:0;
-      background:
-        radial-gradient(120% 130% at 0% 0%, rgba(249,115,22,.10), transparent 60%),
-        radial-gradient(120% 130% at 100% 100%, rgba(168,85,247,.12), transparent 60%),
-        var(--card_bg);
-      border:0.0625rem solid var(--border);
-      box-shadow:0 0.125rem 0.5rem rgba(27,20,37,.05);
-    }
-    .dash-cta h3{ font-size:1.125rem; font-weight:800; margin:0; line-height:1.3; }
-    .dash-cta p{ color:var(--hint); font-size:0.875rem; margin:0.5rem auto 0; max-width:27.5rem; }
-    .dash-cta .dash-cta-btn{
-      width:auto; max-width:100%; margin-top:1.125rem; padding:0.8125rem 1.625rem;
-      display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
-      text-decoration:none; vertical-align:middle;
-    }
-    .dash-cta .dash-cta-btn svg{ width:1.125rem; height:1.125rem; flex:none; }
-
     /* ---------- Custom select + date picker (desktop enhancement) ---------- */
     .ui-select{ position:relative; width:100%; }
     .ui-trigger{
@@ -890,18 +875,16 @@
 
           <!-- Receivables / payables by counterparty (point 8) -->
           <div class="data-card">
-            <h3 data-i18n="dash.cp.title">Receivables / payables</h3>
-            <p class="sub" data-i18n="dash.cp.subtitle">By counterparty</p>
+            <h3 data-i18n="dash.cp.title">Дебіторка / Кредиторка</h3>
+            <p class="sub" data-i18n="dash.cp.subtitle">За контрагентами</p>
             <div class="data-scroll"><table class="pivot" id="cpTable"></table></div>
           </div>
 
-          <div class="dash-cta">
-            <h3 data-i18n="dash.cta.title">Want a live dashboard like this for your business?</h3>
-            <p data-i18n="dash.cta.sub">Lycee builds it from your data — automatically, updated every day.</p>
-            <a class="btn-gradient dash-cta-btn" id="dashCtaBtn" href="https://lyceedata.com" target="_blank" rel="noopener">
-              <span data-i18n="dash.cta.btn">Contact us at lyceedata.com</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </a>
+          <!-- Salaries — every transaction in the Зарплата category, by counterparty × month -->
+          <div class="data-card">
+            <h3 data-i18n="dash.sal.title">Зарплати</h3>
+            <p class="sub" data-i18n="dash.sal.subtitle">За контрагентами · по місяцях</p>
+            <div class="data-scroll"><table class="pivot" id="salTable"></table></div>
           </div>
         </div>
 
@@ -1029,9 +1012,8 @@
         'dash.cp.none':'Немає відкритих залишків.', 'dash.nocp':'Без контрагента',
         'dash.empty.title':'Поки немає даних', 'dash.empty.text':'Додайте транзакції, щоб побачити дашборд.',
         'dash.uncat':'Без категорії', 'dash.none':'Немає даних',
-        'dash.cta.title':'Хочете такий самий живий дашборд для свого бізнесу?',
-        'dash.cta.sub':'Lycee збудує його з ваших даних — автоматично, з оновленням щодня.',
-        'dash.cta.btn':'Зв\'яжіться з нами на lyceedata.com',
+        'dash.sal.title':'Зарплати', 'dash.sal.subtitle':'За контрагентами · по місяцях',
+        'dash.sal.who':'Контрагент', 'dash.sal.none':'Немає зарплатних транзакцій за період.',
         'theme':'Тема',
         // Settings › dictionaries
         'btn.settings':'Довідники',
@@ -1098,6 +1080,8 @@
       const on = !!tg.isFullscreen;
       fsExpand.style.display = on ? 'none' : 'block';
       fsCompress.style.display = on ? 'block' : 'none';
+      // Drives the centred top-bar layout (see body.is-fullscreen in the stylesheet).
+      document.body.classList.toggle('is-fullscreen', on);
     }
     fsBtn.onclick = () => {
       if (typeof tg.requestFullscreen !== 'function'){
@@ -1897,6 +1881,9 @@
     // dividends aren't an expense) and drive the cash-flow statement's buckets.
     function catIsInvestment(tx){ return /інвестиц|investment/.test(catStr(tx)); }
     function catIsDividend(tx){ return /дивіденд|dividend/.test(catStr(tx)); }
+    // Payroll — feeds the standalone Salaries table (every transaction in this category,
+    // whatever its type).
+    function catIsSalary(tx){ return /зарплат|salary|payroll/.test(catStr(tx)); }
     // Loan/credit principal (but NOT the interest line "% по Кредиту") — a financing
     // movement, so it's kept out of the P&L just like investments are.
     function catIsLoanPrincipal(tx){ const s = catStr(tx); return /кредит|loan|credit/.test(s) && !/%|відсот|interest/.test(s); }
@@ -2028,11 +2015,14 @@
       const cfOp = {}, cfInv = {}, cfFin = {}, cfOpTot = {}, cfInvTot = {}, cfFinTot = {};
       // Receivables / payables per counterparty (point 8).
       const cpMap = {};
+      // Salaries pivot: every transaction in the payroll category, counterparty × month.
+      const salCp = {}, salTot = {};
       const bump = (obj, key, k, v) => { (obj[key] = obj[key] || {})[k] = (obj[key][k] || 0) + v; };
       rows.forEach(tx => {
         const k = txMonth(tx); if (!k) return;
         const amt = txAmount(tx);
         const c = catName(tx);
+        if (catIsSalary(tx)){ bump(salCp, cpName(tx), k, amt); salTot[k] = (salTot[k] || 0) + amt; }
         // Income / expense charts: operating P&L only. Investments, dividends and loan
         // principal are financing/investing movements → kept out of these aggregates
         // (dividends get their own P&L line below; the rest only show in cash flow).
@@ -2088,7 +2078,7 @@
       return { months, labels: months.map(monthLabel), inc: incA, exp: expA, net, cash, totIn, totOut, expCat, expCp,
         receivable: recvAccr - recvSettled, payable: payAccr - paySettled, invest, dividend, count: rows.length,
         pnlInc, pnlExp, pnlIncTot, pnlExpTot, pnlDivTot, pnlRev, pnlCost, cpRows,
-        cfOp, cfInv, cfFin, cfOpTot, cfInvTot, cfFinTot };
+        cfOp, cfInv, cfFin, cfOpTot, cfInvTot, cfFinTot, salCp, salTot };
     }
 
     function dashTooltip(extra){
@@ -2363,6 +2353,34 @@
         `<td class="num">${esc(dashMoney(totPay, false))}</td><td class="num">${esc(dashMoney(totRecv, false))}</td></tr>`;
       tbl.innerHTML = head + '<tbody>' + body + foot + '</tbody>';
     }
+    // Salaries — every transaction in the payroll category, pivoted counterparty × month
+    // with a per-counterparty total column and a monthly total row. Months come from the
+    // same axis as the other statements, so the columns line up across the dashboard.
+    function renderSalaryTable(a){
+      const tbl = document.getElementById('salTable'); if (!tbl) return;
+      const months = a.months, labels = a.labels;
+      const names = Object.keys(a.salCp);
+      if (!months.length || !names.length){
+        tbl.innerHTML = `<tbody><tr><td class="data-empty">${esc(t('dash.sal.none'))}</td></tr></tbody>`;
+        return;
+      }
+      const head = `<thead><tr><th class="rowlabel">${esc(t('dash.sal.who'))}</th>${
+        labels.map(l => `<th>${esc(l)}</th>`).join('')}<th>${esc(t('dash.pnl.total'))}</th></tr></thead>`;
+      // Biggest payroll first — the row order that answers "who costs most".
+      const rows = names.map(name => {
+        const mp = a.salCp[name];
+        return { name, mp, tot: months.reduce((s,m) => s + (mp[m] || 0), 0) };
+      }).sort((x,y) => y.tot - x.tot);
+      const body = rows.map(r =>
+        `<tr><td class="rowlabel">${esc(r.name)}</td>${
+          months.map(m => pnlCell(r.mp[m] || 0)).join('')}${pnlCell(r.tot)}</tr>`
+      ).join('');
+      const per = months.map(m => a.salTot[m] || 0);
+      const grand = per.reduce((s,v) => s + v, 0);
+      const foot = `<tr class="r-total"><td class="rowlabel">${esc(t('dash.pnl.total'))}</td>${
+        per.map(pnlCell).join('')}${pnlCell(grand)}</tr>`;
+      tbl.innerHTML = head + '<tbody>' + body + foot + '</tbody>';
+    }
 
     function renderDashboard(){
       if (!window.Chart) return;
@@ -2383,6 +2401,7 @@
       renderPnlTable(a);
       renderCashflowTable(a);
       renderCpTable(a);
+      renderSalaryTable(a);
       Chart.defaults.font.family = "Inter, system-ui, sans-serif";
       Chart.defaults.color = CHART_MUTED;
 
