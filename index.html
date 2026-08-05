@@ -1,0 +1,2456 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Lycee</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="./config.js?v=25"></script>
+  <script src="./api.js?v=25"></script>
+  <script src="./chart.umd.min.js?v=25"></script>
+  <script src="./ui.js?v=25"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      /* ---- Lycee light theme: white surfaces, orange primary, purple secondary ----
+         Everything below is driven by these vars (applyTheme() re-sets the same names
+         at runtime), so the palette is changed in exactly two places. */
+      --orange: #f97316;
+      --orange-dk: #ea580c;
+      --purple: #a855f7;
+      --purple-dk: #7c3aed;
+
+      --bg: #faf8fc;
+      --text: #1b1425;
+      --hint: #6b6478;
+      --button: #f97316;
+      --button_text: #ffffff;
+      --secondary_bg: #ffffff;
+      --field_bg: #ffffff;
+      --field_border: rgba(27,20,37,.14);
+      --field_focus: rgba(249,115,22,.20);
+      --card_bg: #ffffff;
+      --border: rgba(27,20,37,.10);
+      --hover: rgba(168,85,247,.07);
+      --radius: 0.875rem;
+      /* Lycee signature gradient — orange → purple */
+      --grad: linear-gradient(135deg,#f97316 0%,#fb923c 30%,#a855f7 100%);
+      /* Semantic amount colours, tuned for a white background */
+      --pos: #16a34a;
+      --neg: #dc2626;
+      --recv: #2563eb;
+      --pay: #d97706;
+    }
+
+    *{ box-sizing:border-box; }
+    /* Honour the `hidden` attribute even on elements with an author `display` rule
+       (e.g. the flex pills below would otherwise stay visible while hidden). */
+    [hidden]{ display:none !important; }
+    /* Base root font-size: every dimension below is in rem, so this is the single knob the
+       large-screen media queries turn to scale the whole UI up (see end of stylesheet). */
+    html{ font-size:16px; }
+    html,body{ margin:0; }
+
+    /* Single-page app: full-height flex column; each view (New / Transactions /
+       Dashboard) scrolls inside its own area. */
+    body{
+      font-family:'Inter',system-ui,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:0.875rem 1rem;
+      height:100vh; height:100dvh;
+      display:flex; flex-direction:column;
+      overflow:hidden;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+    }
+    body::before{
+      content:"";
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background:
+        radial-gradient(55% 40% at 0% 0%, rgba(249,115,22,.10), transparent 60%),
+        radial-gradient(50% 40% at 100% 100%, rgba(168,85,247,.12), transparent 60%);
+    }
+
+    h1,h2,h3{ font-family:'Manrope',system-ui,Arial,sans-serif; letter-spacing:-.01em; margin:0; }
+    .gradient{
+      background:var(--grad);
+      -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent; color:transparent;
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar{ flex:none; display:grid; grid-template-columns:1fr auto; align-items:center; gap:0.625rem; margin-bottom:0.875rem; }
+    .brand{
+      justify-self:start;
+      font-family:'Manrope'; font-weight:800; font-size:1.375rem; line-height:1;
+      background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .actions{ justify-self:end; display:flex; gap:0.5rem; }
+    .icon-btn{
+      display:inline-flex; align-items:center; gap:0.375rem;
+      width:auto; margin:0; padding:0.5rem 0.75rem;
+      background:var(--card_bg); border:0.0625rem solid var(--border);
+      color:var(--text); border-radius:62.4375rem; font-weight:700; font-size:0.8125rem;
+      cursor:pointer; box-shadow:0 0.0625rem 0.125rem rgba(27,20,37,.05);
+      transition:border-color .2s, background .2s, color .2s;
+    }
+    .icon-btn:hover{ border-color:var(--orange); color:var(--orange-dk); }
+    /* Settings gear gets the accent treatment so the dictionaries are easy to find. */
+    .icon-btn.accent{ color:var(--purple-dk); border-color:rgba(168,85,247,.30); background:rgba(168,85,247,.06); }
+    .icon-btn.accent:hover{ color:#fff; background:var(--purple); border-color:var(--purple); }
+    .icon-btn:active{ transform:translateY(0.0625rem); }
+    .icon-btn:disabled{ opacity:.6; cursor:default; }
+    .icon-btn svg{ width:1.125rem; height:1.125rem; display:block; }
+    .icon-btn .lbl{ transform:translateY(0.0625rem); }
+    /* Fullscreen toggle is only useful on desktop — mobile Telegram opens fullscreen by default */
+    @media (hover:none) and (pointer:coarse){ .desktop-only{ display:none !important; } }
+
+    /* ---------- Tabs ---------- */
+    .tabs{
+      flex:none;
+      display:flex; gap:0.375rem; padding:0.3125rem; margin-bottom:1.125rem;
+      background:var(--card_bg); border:0.0625rem solid var(--border);
+      border-radius:62.4375rem; box-shadow:0 0.0625rem 0.1875rem rgba(27,20,37,.05);
+    }
+    .tab{
+      flex:1; display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+      width:auto; margin:0; padding:0.6875rem 0.625rem; border:none; background:transparent;
+      border-radius:62.4375rem; white-space:nowrap; cursor:pointer;
+      font-family:inherit; color:var(--hint); font-weight:700; font-size:0.8125rem;
+      transition:color .2s, background .2s;
+    }
+    .tab:hover:not(.active){ color:var(--orange-dk); background:var(--hover); }
+    .tab.active{ color:#fff; background:var(--grad); box-shadow:0 0.25rem 0.75rem rgba(249,115,22,.28); }
+    .badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width:1.25rem; height:1.25rem; padding:0 0.375rem; border-radius:62.4375rem;
+      font-size:0.75rem; font-weight:800; background:rgba(27,20,37,.07); color:var(--hint);
+    }
+    .tab.active .badge{ background:rgba(255,255,255,.30); color:#fff; }
+
+    /* ---------- View system ---------- */
+    main{ flex:1 1 auto; min-height:0; display:flex; }
+    .view{ flex:1 1 auto; min-height:0; width:100%; }
+    .view[hidden]{ display:none !important; }
+    /* New / Transactions / Dashboard each scroll inside their own area. */
+    #view-new, #view-table, #view-dash, #view-settings{ overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .col{ max-width:42.5rem; margin-inline:auto; padding-bottom:1.5rem; } /* narrow form column */
+    #view-table .col{ max-width:100%; }                              /* table uses full width */
+
+    /* ---------- Card ---------- */
+    .card{
+      background:var(--card_bg); border:0.0625rem solid var(--border);
+      border-radius:1.25rem; padding:1.125rem;
+      box-shadow:0 0.125rem 0.5rem rgba(27,20,37,.05), 0 0.5rem 1.75rem rgba(124,58,237,.05);
+    }
+    .title{ font-size:1.5rem; font-weight:800; }
+    .subtitle{ color:var(--hint); margin:0.375rem 0 0.5rem; font-size:0.875rem; }
+
+    label{
+      display:block; margin:0.875rem 0 0.375rem;
+      font-weight:700; font-size:0.6875rem; text-transform:uppercase; letter-spacing:.14em;
+      color:var(--hint);
+    }
+    /* Required-field marker — a small red star after the label text. Added via ::after so
+       it survives applyI18n() re-setting the label's textContent on language switch. */
+    label.req::after{ content:" *"; color:var(--neg); font-weight:700; }
+
+    input,select,textarea{
+      width:100%; padding:0.75rem; font-size:1rem; font-family:inherit;
+      color:var(--text); background:var(--field_bg);
+      border:0.0625rem solid var(--field_border); border-radius:var(--radius);
+      outline:none; box-sizing:border-box;
+      transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+    }
+    textarea{ resize:vertical; min-height:5.25rem; }
+    input::placeholder, textarea::placeholder{ color:var(--hint); }
+    input:hover:not(:focus), select:hover:not(:focus){ border-color:rgba(168,85,247,.45); background:var(--hover); }
+    input:focus, select:focus, textarea:focus{
+      border-color:var(--orange);
+      box-shadow:0 0 0 0.25rem var(--field_focus);
+    }
+    select{ appearance:none; -webkit-appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236b6478' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='4 6 8 10 12 6'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 0.75rem center; padding-right:2.25rem;
+      transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+    }
+    /* The native chevron rotates on open to signal the dropdown state. */
+    select:focus{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23f97316' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='4 10 8 6 12 10'/%3E%3C/svg%3E"); }
+    select option, select optgroup{ background-color:var(--secondary_bg); color:var(--text); }
+    select option:disabled{ color:var(--hint); }
+
+    .row2{ display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+
+    /* Date field with mobile placeholder overlay */
+    input[type="date"]{ height:2.875rem; line-height:2.875rem; appearance:none; -webkit-appearance:none; }
+    input[type="date"]:not(:valid){ color:var(--hint); }
+    input[type="date"]:valid{ color:var(--text); }
+    input[type="date"]::-webkit-calendar-picker-indicator{ opacity:.6; cursor:pointer; }
+    input[type="date"]::-webkit-inner-spin-button,
+    input[type="date"]::-webkit-clear-button{ display:none; }
+    /* Total field is type=number — hide the native up/down spinner. */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
+    input[type="number"]{ -moz-appearance:textfield; appearance:textfield; }
+    .date-field{ position:relative; }
+    .date-placeholder, .date-value{ display:none; }
+    @media (hover:none) and (pointer:coarse){
+      .date-placeholder, .date-value{
+        align-items:center; gap:0.375rem;
+        position:absolute; left:0.8125rem; top:50%; transform:translateY(-50%);
+        pointer-events:none; font-size:0.9375rem;
+      }
+      .date-placeholder{ display:flex; color:var(--hint); }
+      .date-value{ color:var(--text); }
+      .date-field:focus-within .date-placeholder,
+      .date-field.has-value .date-placeholder{ display:none; }
+      /* Native date inputs render their value in the OS locale and can't be reformatted,
+         so on mobile we overlay our own locale-formatted text (which includes the Ukrainian
+         "р." year suffix) and make the native value transparent. */
+      .date-field.has-value .date-value{ display:flex; }
+      .date-field.has-value input[type="date"]{ color:transparent; }
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn-gradient{
+      width:100%; margin-top:1.125rem; padding:0.875rem;
+      border:none; border-radius:62.4375rem;
+      background:var(--grad); color:#fff;
+      font-family:inherit; font-weight:800; font-size:1rem; cursor:pointer;
+      box-shadow:0 0.5rem 1.5rem rgba(249,115,22,.28);
+      transition:box-shadow .2s ease, filter .2s ease;
+    }
+    .btn-gradient:hover{ box-shadow:0 0.625rem 1.75rem rgba(168,85,247,.34); filter:saturate(1.1); }
+    .btn-ghost{
+      width:100%; margin-top:0.625rem; padding:0.8125rem;
+      background:transparent; border:0.0625rem solid var(--border); color:var(--text);
+      border-radius:62.4375rem; font-family:inherit; font-weight:700; font-size:0.9375rem; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+      transition:border-color .2s ease, color .2s ease, background .2s ease;
+    }
+    .btn-ghost:hover{ border-color:var(--purple); color:var(--purple-dk); background:var(--hover); }
+    .btn-gradient:active, .btn-ghost:active{ transform:translateY(0.0625rem); }
+    .btn-gradient:disabled, .btn-ghost:disabled{ opacity:.6; cursor:default; }
+    .btn-ghost svg{ width:1.125rem; height:1.125rem; }
+    .hint{ color:var(--hint); font-size:0.75rem; margin-top:0.875rem; text-align:center; }
+    /* Non-blocking inline warning (e.g. payable settled exceeds accrued). */
+    .form-warn{
+      margin:0.75rem 0 0; padding:0.625rem 0.75rem; border-radius:0.625rem;
+      background:rgba(220,38,38,.07); border:0.0625rem solid rgba(220,38,38,.28);
+      color:#b91c1c; font-size:0.78125rem; line-height:1.35;
+    }
+
+    .or-divider{
+      display:flex; align-items:center; gap:0.875rem; margin:1.5rem 0 0.375rem;
+      color:var(--hint); font-size:0.875rem; font-weight:700; text-transform:uppercase; letter-spacing:.14em;
+    }
+    .or-divider::before, .or-divider::after{
+      content:""; flex:1; height:0.0625rem; background:var(--border);
+    }
+
+    /* ---------- Transactions table ---------- */
+    .head{ display:flex; align-items:flex-end; justify-content:space-between; gap:0.75rem; margin-bottom:0.375rem; }
+    .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -0.25rem; }
+    table{ width:100%; border-collapse:collapse; font-size:0.875rem; }
+    thead th{
+      text-align:left; padding:0.625rem 0.625rem; font-size:0.6875rem; font-weight:700;
+      text-transform:uppercase; letter-spacing:.1em; color:var(--hint);
+      border-bottom:0.125rem solid transparent; border-image:var(--grad) 1; white-space:nowrap;
+    }
+    thead th.right{ text-align:right; }
+    tbody td{ padding:0.8125rem 0.625rem; border-bottom:0.0625rem solid var(--border); vertical-align:top; }
+    tbody tr:last-child td{ border-bottom:none; }
+    .t-date{ white-space:nowrap; color:var(--text); }
+    .t-total{ font-weight:800; white-space:nowrap; }
+    /* Direction colours mirror the mobile cards (.txc-amt / .tx-card::before). */
+    .t-total.in{ color:var(--pos); } .t-total.out{ color:var(--neg); }
+    .t-total.recv{ color:var(--recv); } .t-total.pay{ color:var(--pay); }
+    /* Left accent bar — inset top/bottom so a small gap shows between rows. */
+    tbody td:first-child{ position:relative; }
+    tbody tr.in td:first-child::before,
+    tbody tr.out td:first-child::before,
+    tbody tr.recv td:first-child::before,
+    tbody tr.pay td:first-child::before{
+      content:""; position:absolute; left:0; top:0.5rem; bottom:0.5rem; width:0.1875rem; border-radius:0.1875rem;
+    }
+    tbody tr.in   td:first-child::before{ background:var(--pos); }
+    tbody tr.out  td:first-child::before{ background:var(--neg); }
+    tbody tr.recv td:first-child::before{ background:var(--recv); }
+    tbody tr.pay  td:first-child::before{ background:var(--pay); }
+    tbody tr:hover td{ background:var(--hover); }
+    .t-comment{ color:var(--hint); max-width:10rem; }
+    .cur-chip{
+      display:inline-block; padding:0.1875rem 0.5625rem; border-radius:62.4375rem;
+      border:0.0625rem solid var(--border); font-size:0.75rem; font-weight:700; white-space:nowrap;
+    }
+    .row-actions{ display:inline-flex; gap:0.125rem; align-items:center; justify-content:flex-end; }
+    .del, .edit{
+      width:auto; margin:0; padding:0.25rem 0.375rem; background:transparent; border:none;
+      color:var(--hint); cursor:pointer; font-size:1rem; line-height:1; border-radius:0.5rem;
+      display:inline-flex; align-items:center; justify-content:center;
+    }
+    .del:hover{ color:var(--neg); background:rgba(220,38,38,.08); }
+    .edit:hover{ color:var(--purple-dk); background:var(--hover); }
+    .edit svg{ width:1rem; height:1rem; display:block; }
+    th.act, td.act{ width:4rem; text-align:right; }
+
+    /* ---------- Transaction cards (mobile) ---------- */
+    .tx-cards{ display:none; flex-direction:column; gap:0.625rem; }
+    .tx-card{
+      position:relative; overflow:hidden; min-width:0;
+      background:var(--card_bg); border:0.0625rem solid var(--border); border-radius:1rem;
+      padding:0.8125rem 0.875rem 0.8125rem 1.125rem;
+      box-shadow:0 0.0625rem 0.1875rem rgba(27,20,37,.05);
+    }
+    .tx-card::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:0.25rem; }
+    .tx-card.in::before{ background:linear-gradient(#22c55e,#16a34a); }
+    .tx-card.out::before{ background:linear-gradient(#ef4444,#dc2626); }
+    .tx-card.recv::before{ background:linear-gradient(#3b82f6,#2563eb); }
+    .tx-card.pay::before{ background:linear-gradient(#fb923c,#d97706); }
+    .txc-top{ display:flex; align-items:center; gap:0.625rem; }
+    .txc-cp{ font-weight:700; font-size:0.9375rem; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .txc-amt{ flex:none; font-size:1.0625rem; font-weight:800; white-space:nowrap; }
+    .txc-amt.in{ color:var(--pos); } .txc-amt.out{ color:var(--neg); }
+    .txc-amt.recv{ color:var(--recv); } .txc-amt.pay{ color:var(--pay); }
+    .txc-row2{ display:flex; align-items:center; justify-content:space-between; gap:0.625rem; margin-top:0.4375rem; }
+    .txc-date{ font-size:0.78125rem; color:var(--hint); }
+    .txc-acts{ flex:none; display:inline-flex; gap:0.125rem; }
+    .txc-chips{ display:flex; flex-wrap:wrap; gap:0.375rem; margin-top:0.5625rem; }
+    .txc-chip{ display:inline-flex; align-items:center; padding:0.25rem 0.625rem; border-radius:62.4375rem;
+      border:0.0625rem solid var(--border); font-size:0.75rem; font-weight:700; white-space:nowrap; }
+    /* Provider chip is tinted purple so it reads apart from type/category at a glance. */
+    .txc-chip-pv{ border-color:rgba(168,85,247,.35); background:rgba(168,85,247,.08); color:var(--purple-dk); }
+    .txc-comment{ font-size:0.8125rem; color:var(--hint); margin-top:0.5625rem; word-break:break-word; }
+    /* Mobile: show cards, hide the table */
+    @media (max-width:680px){
+      .tx-cards{ display:flex; }
+      #view-table .table-wrap{ display:none; }
+    }
+
+    /* Empty / status state (transactions) */
+    .empty{ text-align:center; padding:2.625rem 1rem 1.875rem; }
+    .empty-emoji{ font-size:2.5rem; }
+    .empty h3{ font-size:1.125rem; font-weight:800; margin-top:0.75rem; }
+    .empty p{ color:var(--hint); font-size:0.875rem; margin:0.5rem 0 0; }
+    .footer-actions{ margin-top:1rem; display:flex; flex-direction:column; gap:0.625rem; }
+
+    /* ---------- Transactions filters + sum row ---------- */
+    .tbl-filters{ margin-bottom:0.875rem; }
+    /* The "Filters" toggle is desktop-hidden; the filter bar is always open on desktop. */
+    .tbl-filters-toggle{ display:none; }
+    .ftog-count{
+      display:inline-flex; align-items:center; justify-content:center; min-width:1.125rem; height:1.125rem;
+      padding:0 0.3125rem; border-radius:62.4375rem; background:var(--grad); color:#fff;
+      font-size:0.6875rem; font-weight:800; line-height:1;
+    }
+    @media (max-width:680px){
+      .tbl-filters-toggle{
+        width:100%; display:inline-flex; align-items:center; gap:0.5rem;
+        margin-bottom:0.875rem; padding:0.625rem 0.875rem; border-radius:0.875rem;
+        background:var(--field_bg); border:0.0625rem solid var(--field_border); color:var(--text);
+        font-family:inherit; font-weight:700; font-size:0.875rem; cursor:pointer;
+      }
+      .tbl-filters-toggle .ftog-ico{ width:1rem; height:1rem; flex:none; color:var(--hint); }
+      .tbl-filters-toggle .ftog-caret{ width:1rem; height:1rem; flex:none; margin-left:auto; color:var(--hint); transition:transform .2s ease; }
+      .tbl-filters-toggle[aria-expanded="true"] .ftog-caret{ transform:rotate(180deg); }
+      /* Collapsed by default on mobile; revealed when #content has .filters-open. Both
+         classes are named so this outranks the base `.dash-filters{ display:flex }`. */
+      .dash-filters.tbl-filters{ display:none; }
+      #content.filters-open .tbl-filters{ display:flex; }
+    }
+    .btn-clear-filters{
+      flex:none; display:inline-flex; align-items:center; gap:0.375rem;
+      padding:0.4375rem 0.75rem; border-radius:62.4375rem;
+      background:var(--field_bg); border:0.0625rem solid var(--field_border); color:var(--hint);
+      font-family:inherit; font-weight:700; font-size:0.75rem; cursor:pointer; white-space:nowrap;
+      transition:border-color .15s ease, color .15s ease;
+    }
+    .btn-clear-filters:hover{ color:var(--neg); border-color:rgba(220,38,38,.45); background:rgba(220,38,38,.06); }
+    .btn-clear-filters:active{ transform:translateY(0.0625rem); }
+    .btn-clear-filters svg{ width:0.875rem; height:0.875rem; }
+    tfoot .sum-row td{ border-top:0.125rem solid var(--border); border-bottom:none; padding-top:0.875rem; }
+    .sum-inner{ display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; }
+    .sum-label{ font-size:0.6875rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--hint); }
+    .sum-vals{ display:flex; gap:0.875rem; flex-wrap:wrap; justify-content:flex-end; }
+    .sum-amt{ font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .sum-amt.pos{ color:var(--pos); } .sum-amt.neg{ color:var(--neg); }
+    .tx-noresults{ padding:1.75rem 0.5rem; text-align:center; color:var(--hint); font-size:0.875rem; }
+    /* Mobile total — a flush summary footer under the list (desktop uses the table tfoot).
+       Top border separates it from the last card, mirroring the desktop footer row. */
+    .tx-sum{ display:none; }
+    @media (max-width:680px){
+      .tx-sum{
+        display:flex; align-items:center; justify-content:space-between; gap:0.375rem 0.875rem; flex-wrap:wrap;
+        margin-top:0.875rem; padding-top:0.875rem; border-top:0.125rem solid var(--border);
+      }
+      /* Dashboard filters on mobile: date range first (From, To), currency last. */
+      .dash-ctl-cur{ order:1; }
+    }
+    .btn-ghost-clear{
+      width:100%; margin:0; padding:0.8125rem; background:transparent;
+      border:0.0625rem solid var(--border); color:var(--text);
+      border-radius:62.4375rem; font-family:inherit; font-weight:700; font-size:0.9375rem; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+    }
+    .btn-ghost-clear svg{ width:1.125rem; height:1.125rem; }
+
+    /* ---------- Toast ---------- */
+    .toast{
+      position:fixed; left:50%; bottom:1.5rem;
+      transform:translateX(-50%) translateY(1.125rem); opacity:0; pointer-events:none;
+      background:var(--grad); color:#fff; padding:0.75rem 1.25rem; border-radius:62.4375rem;
+      font-weight:700; font-size:0.875rem; box-shadow:0 0.625rem 1.875rem rgba(124,58,237,.30);
+      transition:opacity .25s, transform .25s; z-index:150; max-width:90vw; text-align:center;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ---------- Dashboard ---------- */
+    .dash-col{ max-width:61.25rem; margin-inline:auto; padding-bottom:1.5rem; }
+    .dash-filters{ display:flex; gap:0.625rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .dash-ctl{ flex:1 1 9.375rem; min-width:8.75rem; }
+    .dash-ctl > label{ margin:0 0 0.375rem; }
+    .dash-ctl select{ width:100%; }
+    .chips-ctl{ margin-bottom:0.875rem; }
+    .chips{ display:flex; gap:0.4375rem; flex-wrap:wrap; }
+    .chip{
+      font-size:0.75rem; padding:0.375rem 0.6875rem; border-radius:62.4375rem;
+      border:0.0625rem solid var(--border); background:var(--card_bg); color:var(--hint);
+      cursor:pointer; user-select:none; white-space:nowrap;
+      display:inline-flex; align-items:center; gap:0.375rem;
+      transition:color .15s, background .15s, border-color .15s;
+    }
+    .chip .dot{ width:0.5rem; height:0.5rem; border-radius:50%; background:currentColor; }
+    .chip.on{ color:#fff; }
+    .chip:active{ transform:translateY(0.0625rem); }
+
+    /* KPI cards */
+    .kpis{ display:grid; grid-template-columns:repeat(2,1fr); gap:0.625rem; margin:0.25rem 0 1rem; }
+    .kpi{
+      position:relative; overflow:hidden; min-width:0;
+      background:var(--card_bg); border:0.0625rem solid var(--border); border-radius:1rem;
+      padding:0.875rem 0.875rem 0.75rem; backdrop-filter:blur(0.625rem); -webkit-backdrop-filter:blur(0.625rem);
+    }
+    .kpi::before{ content:""; position:absolute; left:0; top:0; height:0.1875rem; width:100%;
+      background:var(--accent, var(--grad)); }
+    .kpi .k-label{ font-size:0.65625rem; color:var(--hint); text-transform:uppercase; letter-spacing:.1em; font-weight:700; }
+    .kpi .k-val{ font-size:1.375rem; font-weight:800; margin-top:0.375rem; line-height:1.05; letter-spacing:-0.03125rem; word-break:break-word; }
+
+    /* Chart grid. min-width:0 lets grid items shrink below the canvas's intrinsic width
+       so a (momentarily stale) wide chart can't force horizontal scroll / block reflow. */
+    .dash-grid{ display:grid; grid-template-columns:1fr; gap:0.75rem; }
+    .dash-card{ padding:1rem; min-width:0; }
+    .dash-card h3{ font-size:0.9375rem; font-weight:800; }
+    .dash-card .sub{ margin:0.125rem 0 0.75rem; font-size:0.75rem; color:var(--hint); }
+    .dash-card .canvas-host{ position:relative; width:100%; min-width:0; height:15rem; }
+    .dash-card.donut .canvas-host, .dash-card.tall .canvas-host{ height:17.5rem; }
+    .dash-card .canvas-host canvas{ display:block; max-width:100%; }
+
+    /* ---------- Data tables (P&L statement + counterparty balances) ---------- */
+    .data-card{
+      background:var(--secondary_bg); border:0.0625rem solid var(--border); border-radius:1rem;
+      padding:1rem; margin-top:0.75rem; min-width:0;
+    }
+    .data-card h3{ font-size:0.9375rem; font-weight:800; }
+    .data-card .sub{ margin:0.125rem 0 0.75rem; font-size:0.75rem; color:var(--hint); }
+    /* Horizontal scroll keeps the wide month matrix usable on mobile; the first column
+       (row labels) stays pinned so you never lose track of the row while scrolling.
+       NB: no horizontal padding on the scroll box — a padded scrollport would offset the
+       sticky `left:0` column and leave a strip where scrolled cells peek through. */
+    .data-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    table.pivot{ border-collapse:collapse; font-size:0.8125rem; white-space:nowrap; min-width:100%; }
+    table.pivot th, table.pivot td{ padding:0.5625rem 0.875rem; text-align:right; border-bottom:0.0625rem solid var(--border); }
+    table.pivot th:first-child, table.pivot td:first-child{ padding-left:0; }
+    table.pivot thead th{
+      font-size:0.6875rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--hint);
+    }
+    table.pivot .rowlabel{
+      position:sticky; left:0; z-index:1; text-align:left; background:var(--secondary_bg);
+      font-weight:600; max-width:10rem; overflow:hidden; text-overflow:ellipsis; padding-right:1.125rem;
+    }
+    table.pivot thead .rowlabel{ z-index:3; }
+    table.pivot tbody tr:last-child td{ border-bottom:none; }
+    table.pivot .r-section td, table.pivot .r-section .rowlabel{ font-weight:800; color:var(--text); }
+    table.pivot .r-total td, table.pivot .r-total .rowlabel{ font-weight:800; border-top:0.125rem solid var(--border); }
+    table.pivot .r-cat .rowlabel{ font-weight:500; color:var(--hint); padding-left:1.625rem; }
+    /* Net income / net cash flow (accent), dividends line, and the margin % row. */
+    table.pivot .r-net td, table.pivot .r-net .rowlabel{ color:var(--purple-dk); }
+    table.pivot .r-div .rowlabel{ font-weight:600; }
+    table.pivot .r-margin td, table.pivot .r-margin .rowlabel{ font-weight:700; border-top:0.0625rem dashed var(--border); }
+    table.pivot .num{ font-variant-numeric:tabular-nums; }
+    table.pivot .pos{ color:var(--pos); }
+    table.pivot .neg{ color:var(--neg); }
+    table.pivot .muted{ color:var(--hint); }
+    .data-empty{ padding:1.125rem 0.25rem; color:var(--hint); font-size:0.84375rem; text-align:center; }
+
+    /* ---------- Settings › dictionaries (counterparties + providers) ---------- */
+    .dict-card{ margin-bottom:0.875rem; }
+    .dict-card + .dict-card{ margin-top:0.875rem; }
+    .dict-head{ display:flex; align-items:center; gap:0.625rem; }
+    .dict-head h3{ font-size:1rem; font-weight:800; flex:1; min-width:0; }
+    .dict-count{
+      flex:none; display:inline-flex; align-items:center; justify-content:center;
+      min-width:1.5rem; height:1.5rem; padding:0 0.5rem; border-radius:62.4375rem;
+      background:var(--hover); color:var(--purple-dk); font-size:0.75rem; font-weight:800;
+    }
+    /* Add row: text field + a square gradient "+" button. */
+    .dict-add{ display:flex; gap:0.5rem; margin-top:0.75rem; }
+    .dict-add input{ flex:1; min-width:0; }
+    .dict-add-btn{
+      flex:none; width:2.875rem; height:2.875rem; padding:0; border:none; border-radius:var(--radius);
+      background:var(--grad); color:#fff; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      box-shadow:0 0.25rem 0.75rem rgba(249,115,22,.26);
+      transition:box-shadow .2s ease, filter .2s ease;
+    }
+    .dict-add-btn:hover{ box-shadow:0 0.375rem 1rem rgba(168,85,247,.32); filter:saturate(1.1); }
+    .dict-add-btn:disabled{ opacity:.55; cursor:default; box-shadow:none; }
+    .dict-add-btn svg{ width:1.25rem; height:1.25rem; }
+
+    .dict-list{ list-style:none; margin:0.875rem 0 0; padding:0; }
+    .dict-item{
+      display:flex; align-items:center; gap:0.625rem;
+      padding:0.625rem 0.25rem 0.625rem 0.75rem; border-radius:0.75rem;
+      border:0.0625rem solid transparent; transition:background .15s ease, border-color .15s ease;
+    }
+    .dict-item + .dict-item{ margin-top:0.25rem; }
+    .dict-item:hover{ background:var(--hover); border-color:var(--border); }
+    /* Colour dot distinguishes the two dictionaries at a glance. */
+    .dict-dot{ flex:none; width:0.5rem; height:0.5rem; border-radius:50%; }
+    .dict-cp .dict-dot{ background:var(--orange); }
+    .dict-pv .dict-dot{ background:var(--purple); }
+    .dict-name{ flex:1; min-width:0; font-size:0.9375rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dict-del{
+      flex:none; width:auto; margin:0; padding:0.375rem; background:transparent; border:none;
+      color:var(--hint); cursor:pointer; border-radius:0.5rem; line-height:1;
+      display:inline-flex; align-items:center; justify-content:center;
+    }
+    .dict-del:hover{ color:var(--neg); background:rgba(220,38,38,.08); }
+    .dict-del:disabled{ opacity:.5; cursor:default; }
+    .dict-del svg{ width:1rem; height:1rem; display:block; }
+    .dict-empty{ padding:1rem 0.25rem; color:var(--hint); font-size:0.84375rem; text-align:center; }
+
+    @media (min-width:560px){ .kpis{ grid-template-columns:repeat(4,1fr); } }
+    @media (min-width:760px){
+      .dash-grid{ grid-template-columns:1fr 1fr; }
+      .dash-card.span2{ grid-column:span 2; }
+    }
+    @media (min-width:1100px){ .kpis{ grid-template-columns:repeat(4,1fr); } }
+
+    /* Dashboard call-to-action */
+    .dash-cta{
+      margin-top:1.25rem; padding:1.625rem 1.25rem; border-radius:1.25rem; text-align:center; min-width:0;
+      background:
+        radial-gradient(120% 130% at 0% 0%, rgba(249,115,22,.10), transparent 60%),
+        radial-gradient(120% 130% at 100% 100%, rgba(168,85,247,.12), transparent 60%),
+        var(--card_bg);
+      border:0.0625rem solid var(--border);
+      box-shadow:0 0.125rem 0.5rem rgba(27,20,37,.05);
+    }
+    .dash-cta h3{ font-size:1.125rem; font-weight:800; margin:0; line-height:1.3; }
+    .dash-cta p{ color:var(--hint); font-size:0.875rem; margin:0.5rem auto 0; max-width:27.5rem; }
+    .dash-cta .dash-cta-btn{
+      width:auto; max-width:100%; margin-top:1.125rem; padding:0.8125rem 1.625rem;
+      display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+      text-decoration:none; vertical-align:middle;
+    }
+    .dash-cta .dash-cta-btn svg{ width:1.125rem; height:1.125rem; flex:none; }
+
+    /* ---------- Custom select + date picker (desktop enhancement) ---------- */
+    .ui-select{ position:relative; width:100%; }
+    .ui-trigger{
+      width:100%; min-height:2.875rem; padding:0.6875rem 0.75rem; font-size:1rem; font-family:inherit;
+      color:var(--text); background:var(--field_bg); border:0.0625rem solid var(--field_border);
+      border-radius:var(--radius); cursor:pointer; outline:none;
+      display:flex; align-items:center; gap:0.5rem;
+      transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+    }
+    .ui-trigger:hover{ border-color:rgba(168,85,247,.45); background:var(--hover); }
+    .ui-select.open .ui-trigger, .ui-trigger:focus-visible{ border-color:var(--orange); box-shadow:0 0 0 0.25rem var(--field_focus); }
+    .ui-trigger-label{ flex:1; min-width:0; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ui-trigger.placeholder .ui-trigger-label{ color:var(--hint); }
+    .ui-caret, .ui-calico{ width:1rem; height:1rem; flex:none; color:var(--hint); }
+    .ui-caret{ transition:transform .2s ease; }
+    .ui-select.open .ui-trigger .ui-caret{ transform:rotate(180deg); color:var(--orange); }
+    .ui-select.open .ui-trigger .ui-calico{ color:var(--orange); }
+
+    .ui-pop{
+      position:fixed; z-index:120; background:var(--secondary_bg);
+      border:0.0625rem solid var(--border); border-radius:0.875rem; padding:0.375rem;
+      box-shadow:0 1.125rem 3.125rem rgba(27,20,37,.18), 0 0.25rem 0.75rem rgba(27,20,37,.08);
+      opacity:0; transform:translateY(-0.375rem) scale(.98); transform-origin:top center;
+      transition:opacity .15s ease, transform .15s ease; pointer-events:none;
+    }
+    .ui-pop.show{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+    .ui-pop-list{ max-height:17.5rem; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .ui-opt{
+      padding:0.625rem 0.75rem; border-radius:0.5625rem; font-size:0.9375rem; color:var(--text); cursor:pointer;
+      display:flex; align-items:center; gap:0.5rem; transition:background-color .12s ease;
+    }
+    .ui-opt-txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ui-opt.active{ background:var(--hover); }
+    .ui-opt.selected{ background:linear-gradient(135deg,rgba(249,115,22,.16),rgba(168,85,247,.16)); color:var(--text); font-weight:600; }
+    .ui-opt.disabled{ color:var(--hint); opacity:.6; cursor:default; }
+    .ui-check{ width:1rem; height:1rem; flex:none; color:var(--orange); opacity:0; }
+    .ui-opt.selected .ui-check{ opacity:1; }
+    /* Multi-select "All" (clear) row — separated from the option list below it. */
+    .ui-opt-all{ border-bottom:0.0625rem solid var(--border); margin-bottom:0.1875rem; padding-bottom:0.625rem; border-radius:0.5625rem 0.5625rem 0 0; }
+
+    /* calendar */
+    .ui-cal{ width:18.75rem; max-width:calc(100vw - 1rem); }
+    .ui-cal-head{ display:flex; align-items:center; justify-content:space-between; padding:0.25rem 0.25rem 0.625rem; }
+    .ui-cal-title{ font-family:'Manrope',sans-serif; font-weight:700; font-size:0.9375rem; }
+    .ui-cal-nav{ display:flex; gap:0.375rem; }
+    .ui-cal-nav button{ width:1.875rem; height:1.875rem; border-radius:0.5625rem; border:0.0625rem solid var(--border);
+      background:var(--card_bg); color:var(--text); cursor:pointer; font-size:1.125rem; line-height:1;
+      display:inline-flex; align-items:center; justify-content:center; transition:border-color .15s, color .15s; }
+    .ui-cal-nav button:hover{ border-color:var(--orange); color:var(--orange); }
+    /* Fixed row height so a cell (esp. an empty leading/trailing one) can't stretch its row. */
+    .ui-cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:2.125rem; gap:0.125rem; }
+    .ui-cal-dow{ display:flex; align-items:center; justify-content:center; font-size:0.625rem; color:var(--hint); text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+    .ui-cal-day{ min-width:0; display:flex; align-items:center; justify-content:center; border-radius:0.5625rem;
+      font-size:0.8125rem; cursor:pointer; color:var(--text); transition:background-color .12s ease; }
+    .ui-cal-day.empty{ cursor:default; }
+    .ui-cal-day:not(.empty):not(.disabled):hover{ background:var(--hover); }
+    .ui-cal-day.today{ box-shadow:inset 0 0 0 0.0625rem var(--field_border); }
+    .ui-cal-day.selected{ background:var(--grad); color:#fff; font-weight:700; box-shadow:none; }
+    .ui-cal-day.disabled{ color:var(--hint); opacity:.3; cursor:default; }
+    .ui-cal-foot{ display:flex; justify-content:space-between; padding:0.5rem 0.125rem 0.125rem; }
+    .ui-cal-foot button{ background:transparent; border:none; color:var(--orange-dk); font-family:inherit;
+      font-weight:700; font-size:0.8125rem; cursor:pointer; padding:0.375rem 0.5rem; border-radius:0.5rem; transition:background-color .12s; }
+    .ui-cal-foot button:hover{ background:rgba(249,115,22,.12); }
+
+    /* ---------- Large/high-res screens: scale the whole UI up via the root font-size ----------
+       Every dimension in this stylesheet is in rem, so bumping :root's font-size scales the
+       entire UI uniformly — the same visual effect the old `body{ zoom:N }` hack produced, but
+       WITHOUT its breakage: charts become genuinely larger canvases (Chart.js renders them crisp
+       instead of magnifying a stale bitmap), and the fixed-position date popup / toast stay
+       correctly placed (no zoomed coordinate space). Viewport units (100dvh) deliberately do NOT
+       scale, so the body stays exactly one screen tall and each view scrolls internally — no
+       `height / N` compensation needed. Breakpoints stay in px (viewport-based, unaffected). */
+    @media (min-width:1600px){ :root{ font-size:20px; } }  /* 1.25x — matches old zoom:1.25 */
+    @media (min-width:2200px){ :root{ font-size:24px; } }  /* 1.5x  — matches old zoom:1.5  */
+  </style>
+</head>
+<body data-scheme="light">
+  <header class="topbar">
+    <div class="brand">Lycee</div>
+    <div class="actions">
+      <button class="icon-btn accent" id="settingsBtn" type="button" title="Довідники">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="lbl" data-i18n="btn.settings">Довідники</span>
+      </button>
+      <button class="icon-btn desktop-only" id="fsBtn" type="button" title="На весь екран">
+        <svg id="fsExpand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <svg id="fsCompress" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" type="button" data-view="new" data-i18n="tab.new">Додати</button>
+    <button class="tab" type="button" data-view="table">
+      <span data-i18n="tab.list">Транзакції</span>
+      <span class="badge" id="countBadge">0</span>
+    </button>
+    <button class="tab" type="button" data-view="dash" data-i18n="tab.dash">Дашборд</button>
+  </nav>
+
+  <main>
+    <!-- ============ NEW ============ -->
+    <section class="view" id="view-new">
+      <div class="col">
+        <div class="card">
+          <h1 class="title gradient" data-i18n="form.title">Нова транзакція</h1>
+          <p class="subtitle" data-i18n="form.subtitle">Додайте запис до вашого журналу.</p>
+
+          <label class="req" data-i18n="field.date">Дата</label>
+          <div class="date-field" id="dateWrap">
+            <input id="date" type="date" min="2025-01-01" required />
+            <span class="date-placeholder" data-i18n="ph.date">📅 Оберіть дату</span>
+            <span class="date-value"></span>
+          </div>
+
+          <div class="row2">
+            <div>
+              <label class="req" data-i18n="field.total">Сума</label>
+              <input id="total" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" autocomplete="off" />
+            </div>
+            <div>
+              <label data-i18n="field.currency">Валюта</label>
+              <select id="currency">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="UAH">UAH</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="req" data-i18n="field.type">Тип</label>
+          <select id="type"><option value="" disabled selected data-i18n="ph.select">Оберіть…</option></select>
+
+          <label class="req" data-i18n="field.category">Категорія</label>
+          <select id="category"><option value="" disabled selected data-i18n="ph.select">Оберіть…</option></select>
+
+          <label class="req" data-i18n="field.counterparty">Контрагент</label>
+          <select id="counterparty"><option value="" disabled selected data-i18n="ph.select">Оберіть…</option></select>
+
+          <label data-i18n="field.provider">Постачальник</label>
+          <select id="provider"><option value="" disabled selected data-i18n="ph.select">Оберіть…</option></select>
+
+          <p class="form-warn" id="payableWarn" hidden></p>
+
+          <label data-i18n="field.comment">Коментар</label>
+          <textarea id="comment" rows="3" maxlength="40" data-i18n-ph="ph.comment" placeholder="За що?"></textarea>
+
+          <button class="btn-gradient" id="createBtn" type="button" data-i18n="btn.create">Створити транзакцію</button>
+          <button class="btn-ghost" id="cancelEditBtn" type="button" style="display:none" data-i18n="btn.cancel">Скасувати</button>
+
+          <p class="hint" id="themeHint"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TRANSACTIONS ============ -->
+    <section class="view" id="view-table" hidden>
+      <div class="col">
+        <div class="card">
+          <div class="head">
+            <div>
+              <h1 class="title gradient" data-i18n="table.title">Transactions</h1>
+              <p class="subtitle" data-i18n="table.subtitle">Everything you've added so far.</p>
+            </div>
+            <button class="btn-clear-filters" id="clearFiltersBtn" type="button" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span data-i18n="tbl.f.clear">Clear filters</span>
+            </button>
+          </div>
+
+          <div id="content" style="display:none">
+            <!-- Filters: collapsed behind this toggle on mobile, always shown on desktop. -->
+            <button class="tbl-filters-toggle" id="filtersToggle" type="button" aria-expanded="false">
+              <svg class="ftog-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span data-i18n="tbl.f.toggle">Filters</span>
+              <span class="ftog-count" id="filtersCount" hidden>0</span>
+              <svg class="ftog-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <!-- Filters -->
+            <div class="dash-filters tbl-filters">
+              <div class="dash-ctl">
+                <label data-i18n="tbl.f.type">Type</label>
+                <select id="fType"></select>
+              </div>
+              <div class="dash-ctl">
+                <label data-i18n="tbl.f.cat">Category</label>
+                <select id="fCat" multiple></select>
+              </div>
+              <div class="dash-ctl">
+                <label data-i18n="field.counterparty">Контрагент</label>
+                <select id="fCp" multiple></select>
+              </div>
+              <div class="dash-ctl">
+                <label data-i18n="field.provider">Постачальник</label>
+                <select id="fPv" multiple></select>
+              </div>
+              <div class="dash-ctl">
+                <label data-i18n="tbl.f.cur">Валюта</label>
+                <select id="fCur"></select>
+              </div>
+              <div class="dash-ctl">
+                <label data-i18n="dash.f.from">From</label>
+                <div class="date-field" id="fFromWrap">
+                  <input id="fFrom" type="date" min="2025-01-01">
+                  <span class="date-placeholder" data-i18n="dash.ph.from">📅 From date</span>
+                  <span class="date-value"></span>
+                </div>
+              </div>
+              <div class="dash-ctl">
+                <label data-i18n="dash.f.to">To</label>
+                <div class="date-field" id="fToWrap">
+                  <input id="fTo" type="date" min="2025-01-01">
+                  <span class="date-placeholder" data-i18n="dash.ph.to">📅 To date</span>
+                  <span class="date-value"></span>
+                </div>
+              </div>
+            </div>
+            <!-- Card list (mobile) -->
+            <div id="txCards" class="tx-cards"></div>
+            <!-- Table (desktop) -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-i18n="th.date">Дата</th>
+                    <th data-i18n="th.total">Сума</th>
+                    <th data-i18n="th.currency">Валюта</th>
+                    <th data-i18n="th.type">Тип</th>
+                    <th data-i18n="th.category">Категорія</th>
+                    <th data-i18n="th.counterparty">Контрагент</th>
+                    <th data-i18n="th.provider">Постачальник</th>
+                    <th data-i18n="th.comment">Коментар</th>
+                    <th class="act"></th>
+                  </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+                <tfoot id="rowsFoot"></tfoot>
+              </table>
+            </div>
+            <!-- Sum summary (mobile) — sits below the list, mirroring the desktop table footer -->
+            <div id="txSum" class="tx-sum"></div>
+
+            <div class="footer-actions">
+              <button class="btn-ghost-clear" id="clearBtn" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                <span data-i18n="btn.clear">Clear all</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="empty" class="empty" style="display:none">
+            <div class="empty-emoji" id="emptyEmoji">🧾</div>
+            <h3 id="emptyTitle" data-i18n="empty.title">No transactions yet</h3>
+            <p id="emptyText" data-i18n="empty.text">Create one or generate sample data on the New tab.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="view" id="view-dash" hidden>
+      <div class="col dash-col">
+        <div class="dash-filters">
+          <div class="dash-ctl dash-ctl-cur">
+            <label data-i18n="dash.f.currency">Currency</label>
+            <select id="dashCurrency"></select>
+          </div>
+          <div class="dash-ctl">
+            <label data-i18n="dash.f.from">From</label>
+            <div class="date-field" id="dashFromWrap">
+              <input id="dashFrom" type="date" min="2025-01-01">
+              <span class="date-placeholder" data-i18n="dash.ph.from">📅 From date</span>
+              <span class="date-value"></span>
+            </div>
+          </div>
+          <div class="dash-ctl">
+            <label data-i18n="dash.f.to">To</label>
+            <div class="date-field" id="dashToWrap">
+              <input id="dashTo" type="date" min="2025-01-01">
+              <span class="date-placeholder" data-i18n="dash.ph.to">📅 To date</span>
+              <span class="date-value"></span>
+            </div>
+          </div>
+        </div>
+        <section class="kpis" id="dashKpis"></section>
+
+        <div id="dashContent">
+          <div class="dash-grid">
+            <div class="card dash-card span2">
+              <h3 data-i18n="dash.c.pnl">Profit &amp; loss</h3>
+              <p class="sub" id="pnlSub" data-i18n="dash.c.pnl.sub">Revenue · costs · net</p>
+              <div class="canvas-host"><canvas id="cPnl"></canvas></div>
+            </div>
+            <div class="card dash-card">
+              <h3 data-i18n="dash.c.net">Net profit</h3>
+              <p class="sub" data-i18n="dash.c.net.sub">Monthly dynamics</p>
+              <div class="canvas-host"><canvas id="cNet"></canvas></div>
+            </div>
+            <div class="card dash-card">
+              <h3 data-i18n="dash.c.cash">Cash balance</h3>
+              <p class="sub" data-i18n="dash.c.cash.sub">Cumulative</p>
+              <div class="canvas-host"><canvas id="cCash"></canvas></div>
+            </div>
+            <div class="card dash-card donut">
+              <h3 data-i18n="dash.c.exp">Expense structure</h3>
+              <p class="sub" data-i18n="dash.c.exp.sub">By category</p>
+              <div class="canvas-host"><canvas id="cExp"></canvas></div>
+            </div>
+            <div class="card dash-card tall">
+              <h3 data-i18n="dash.c.topcp">Top counterparties by expense</h3>
+              <p class="sub" data-i18n="dash.c.topcp.sub">Highest spend</p>
+              <div class="canvas-host"><canvas id="cTopCp"></canvas></div>
+            </div>
+          </div>
+
+          <!-- P&L statement (point 7) — monthly pivot, ref image.png -->
+          <div class="data-card">
+            <h3 data-i18n="dash.pnl.title">P&amp;L statement</h3>
+            <p class="sub" data-i18n="dash.pnl.subtitle">By month</p>
+            <div class="data-scroll"><table class="pivot" id="pnlTable"></table></div>
+          </div>
+
+          <!-- Cash flow statement — monthly pivot, direct method -->
+          <div class="data-card">
+            <h3 data-i18n="dash.cf.title">Cash flow statement</h3>
+            <p class="sub" data-i18n="dash.cf.subtitle">By month · direct method</p>
+            <div class="data-scroll"><table class="pivot" id="cfTable"></table></div>
+          </div>
+
+          <!-- Receivables / payables by counterparty (point 8) -->
+          <div class="data-card">
+            <h3 data-i18n="dash.cp.title">Receivables / payables</h3>
+            <p class="sub" data-i18n="dash.cp.subtitle">By counterparty</p>
+            <div class="data-scroll"><table class="pivot" id="cpTable"></table></div>
+          </div>
+
+          <div class="dash-cta">
+            <h3 data-i18n="dash.cta.title">Want a live dashboard like this for your business?</h3>
+            <p data-i18n="dash.cta.sub">Lycee builds it from your data — automatically, updated every day.</p>
+            <a class="btn-gradient dash-cta-btn" id="dashCtaBtn" href="https://lyceedata.com" target="_blank" rel="noopener">
+              <span data-i18n="dash.cta.btn">Contact us at lyceedata.com</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div id="dashEmpty" class="empty" style="display:none">
+          <div class="empty-emoji">📊</div>
+          <h3 data-i18n="dash.empty.title">Поки немає даних</h3>
+          <p data-i18n="dash.empty.text">Додайте транзакції, щоб побачити дашборд.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS › DICTIONARIES ============ -->
+    <section class="view" id="view-settings" hidden>
+      <div class="col">
+        <div class="card dict-card">
+          <h1 class="title gradient" data-i18n="set.title">Довідники</h1>
+          <p class="subtitle" data-i18n="set.subtitle">Керуйте списками, з яких заповнюється форма.</p>
+        </div>
+
+        <!-- Counterparties -->
+        <div class="card dict-card dict-cp">
+          <div class="dict-head">
+            <h3 data-i18n="set.cp.title">Контрагенти</h3>
+            <span class="dict-count" id="cpCount">0</span>
+          </div>
+          <div class="dict-add">
+            <input id="cpNew" type="text" maxlength="30" autocomplete="off"
+                   data-i18n-ph="set.ph.cp" placeholder="Новий контрагент" />
+            <button class="dict-add-btn" id="cpAddBtn" type="button" data-i18n-title="set.add" title="Додати">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+          <ul class="dict-list" id="cpList"></ul>
+        </div>
+
+        <!-- Providers -->
+        <div class="card dict-card dict-pv">
+          <div class="dict-head">
+            <h3 data-i18n="set.pv.title">Постачальники</h3>
+            <span class="dict-count" id="pvCount">0</span>
+          </div>
+          <div class="dict-add">
+            <input id="pvNew" type="text" maxlength="30" autocomplete="off"
+                   data-i18n-ph="set.ph.pv" placeholder="Новий постачальник" />
+            <button class="dict-add-btn" id="pvAddBtn" type="button" data-i18n-title="set.add" title="Додати">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+          <ul class="dict-list" id="pvList"></ul>
+        </div>
+
+        <button class="btn-ghost" id="settingsBackBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          <span data-i18n="set.back">Назад</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /* ---------------- Telegram bootstrap (with standalone fallback) ---------------- */
+    const tg = (window.Telegram && window.Telegram.WebApp) || {
+      ready(){}, expand(){}, onEvent(){}, themeParams:{}, colorScheme:'dark',
+      showAlert(m){ alert(m); }, showConfirm(m,cb){ cb(confirm(m)); }, isFullscreen:false,
+      HapticFeedback:{ notificationOccurred(){}, impactOccurred(){} }
+    };
+    tg.ready(); tg.expand();
+
+    /* ---------------- i18n (Ukrainian only) ----------------
+       The app ships in a single language, so this is a flat key→string map rather
+       than a per-language dictionary. Reference data (types / categories /
+       counterparties / providers) carries its own Ukrainian `name` from the API. */
+    const dict = {
+        'tab.new':'Додати', 'tab.list':'Транзакції',
+        'form.title':'Нова транзакція', 'form.subtitle':'Додайте запис до вашого журналу.',
+        'form.edit.title':'Редагувати транзакцію', 'form.edit.subtitle':'Оновіть цей запис.',
+        'btn.save':'Зберегти зміни', 'btn.cancel':'Скасувати', 'toast.updated':'Транзакцію оновлено',
+        'field.date':'Дата', 'field.total':'Сума', 'field.currency':'Валюта', 'field.type':'Тип',
+        'field.category':'Категорія', 'field.counterparty':'Контрагент', 'field.comment':'Коментар',
+        'field.provider':'Постачальник',
+        'ph.date':'📅 Оберіть дату', 'ph.comment':'За що?', 'ph.select':'Оберіть…',
+        'btn.create':'Створити транзакцію',
+        'toast.created':'Транзакцію додано',
+        'toast.error':'Сталася помилка',
+        'alert.missing':'Заповніть, будь ласка:',
+        'warn.payable':'Погашена кредиторка перевищує нараховану для цього контрагента на',
+        'hint.config':'⚠ Вкажіть API_BASE у config.js',
+        'table.title':'Транзакції', 'table.subtitle':'Усе, що ви додали.',
+        'th.date':'Дата', 'th.total':'Сума', 'th.currency':'Валюта', 'th.type':'Тип',
+        'th.category':'Категорія', 'th.counterparty':'Контрагент', 'th.comment':'Коментар',
+        'th.provider':'Постачальник',
+        'empty.title':'Поки немає транзакцій', 'empty.text':'Створіть першу на вкладці «Додати».',
+        'cfg.title':'Бекенд не налаштовано', 'cfg.text':'Вкажіть API_BASE у config.js, щоб завантажити транзакції.',
+        'err.title':'Не вдалося завантажити транзакції', 'err.text':'Перевірте, що бекенд запущено та доступний.',
+        'btn.clear':'Очистити все', 'confirm.clear':'Видалити всі транзакції?',
+        'toast.cleared':'Очищено',
+        'tab.dash':'Дашборд',
+        'dash.f.currency':'Валюта', 'dash.f.from':'Від', 'dash.f.to':'До', 'dash.f.cats':'Категорії',
+        'dash.ph.from':'📅 Дата від', 'dash.ph.to':'📅 Дата до',
+        'dash.kpi.income':'Доходи', 'dash.kpi.expenses':'Витрати', 'dash.kpi.net':'Чистий прибуток',
+        'dash.kpi.cash':'Залишок коштів',
+        'dash.kpi.receivable':'Дебіторська заборг.', 'dash.kpi.payable':'Кредиторська заборг.',
+        'dash.kpi.invest':'Інвестиції', 'dash.kpi.dividend':'Дивіденди',
+        'dash.income':'Доходи', 'dash.expenses':'Витрати',
+        'dash.c.pnl':'Прибутки та збитки', 'dash.c.pnl.sub':'Доходи · витрати · прибуток',
+        'dash.c.net':'Чистий прибуток', 'dash.c.net.sub':'Динаміка по місяцях',
+        'dash.c.cash':'Залишок коштів', 'dash.c.cash.sub':'Накопичувально',
+        'dash.c.exp':'Структура витрат', 'dash.c.exp.sub':'За категоріями',
+        'dash.c.topcp':'Топ контрагентів за витратами', 'dash.c.topcp.sub':'Найбільші витрати',
+        'dash.pnl.rev':'Доходи', 'dash.pnl.cost':'Витрати', 'dash.pnl.net':'Прибуток', 'dash.pnl.margin':'Маржа',
+        'dash.pnl.title':'Звіт про прибутки та збитки', 'dash.pnl.subtitle':'По місяцях',
+        'dash.pnl.profit':'Прибуток', 'dash.pnl.income':'Доходи', 'dash.pnl.expenses':'Витрати', 'dash.pnl.total':'Усього',
+        'dash.pnl.netincome':'Чистий прибуток', 'dash.pnl.dividends':'Дивіденди', 'dash.pnl.marginpct':'Маржа %',
+        'dash.pnl.none':'Немає доходів чи витрат за період.',
+        'dash.cf.title':'Звіт про рух грошових коштів', 'dash.cf.subtitle':'По місяцях · прямий метод',
+        'dash.cf.op':'Операційна діяльність', 'dash.cf.inv':'Інвестиційна діяльність', 'dash.cf.fin':'Фінансова діяльність',
+        'dash.cf.net':'Чистий грошовий потік', 'dash.cf.cum':'Наростаючим підсумком', 'dash.cf.none':'Немає руху коштів за період.',
+        'tbl.f.type':'Тип', 'tbl.f.cat':'Категорія', 'tbl.f.cur':'Валюта', 'tbl.f.all':'Усі',
+        'tbl.f.clear':'Скинути фільтри', 'tbl.f.toggle':'Фільтри',
+        'tbl.total':'Усього', 'tbl.noresults':'Немає транзакцій за цими фільтрами.',
+        'dash.cp.title':'Дебіторка / Кредиторка', 'dash.cp.subtitle':'За контрагентами',
+        'dash.cp.counterparty':'Контрагент', 'dash.cp.payable':'Кредиторка', 'dash.cp.receivable':'Дебіторка',
+        'dash.cp.none':'Немає відкритих залишків.', 'dash.nocp':'Без контрагента',
+        'dash.empty.title':'Поки немає даних', 'dash.empty.text':'Додайте транзакції, щоб побачити дашборд.',
+        'dash.uncat':'Без категорії', 'dash.none':'Немає даних',
+        'dash.cta.title':'Хочете такий самий живий дашборд для свого бізнесу?',
+        'dash.cta.sub':'Lycee збудує його з ваших даних — автоматично, з оновленням щодня.',
+        'dash.cta.btn':'Зв\'яжіться з нами на lyceedata.com',
+        'theme':'Тема',
+        // Settings › dictionaries
+        'btn.settings':'Довідники',
+        'set.title':'Довідники', 'set.subtitle':'Керуйте списками, з яких заповнюється форма.',
+        'set.cp.title':'Контрагенти', 'set.pv.title':'Постачальники',
+        'set.ph.cp':'Новий контрагент', 'set.ph.pv':'Новий постачальник',
+        'set.add':'Додати', 'set.back':'Назад',
+        'set.cp.empty':'Поки немає контрагентів. Додайте першого вище.',
+        'set.pv.empty':'Поки немає постачальників. Додайте першого вище.',
+        'set.cp.added':'Контрагента додано', 'set.pv.added':'Постачальника додано',
+        'set.cp.deleted':'Контрагента видалено', 'set.pv.deleted':'Постачальника видалено',
+        'set.confirm.cp':'Видалити контрагента «%s»?', 'set.confirm.pv':'Видалити постачальника «%s»?',
+        'set.dup':'Такий запис уже існує',
+        'set.inuse':'Не вдалося видалити — можливо, запис уже використовується'
+      };
+    const t = (k) => dict[k] || k;
+    const locale = () => 'uk-UA';
+
+    function applyI18n(){
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+      document.documentElement.lang = 'uk';
+      refillSelects();
+      renderTable();
+      try { dashOnData(); } catch(e){}
+      try { syncAllDateFields(); } catch(e){}
+      if (window.LyceeUI) LyceeUI.refreshAll();
+    }
+
+    /* ---------------- Theme (FORCED LIGHT — ignores Telegram's theme) ----------------
+       White surfaces, orange primary, purple secondary. These are the same custom
+       properties the stylesheet declares in :root — re-set here so the palette wins
+       over anything Telegram injects, and so the native header matches the page. */
+    function applyTheme(){
+      document.body.setAttribute('data-scheme', 'light');
+
+      const bg = '#faf8fc';
+      const s = document.documentElement.style;
+      s.setProperty('--bg', bg);
+      s.setProperty('--text', '#1b1425');
+      s.setProperty('--hint', '#6b6478');
+      s.setProperty('--button', '#f97316');
+      s.setProperty('--button_text', '#ffffff');
+      s.setProperty('--secondary_bg', '#ffffff');
+      s.setProperty('--card_bg', '#ffffff');
+      s.setProperty('--border', 'rgba(27,20,37,.10)');
+      s.setProperty('--field_bg', '#ffffff');
+      s.setProperty('--field_border', 'rgba(27,20,37,.14)');
+      s.setProperty('--field_focus', 'rgba(249,115,22,.20)');
+      s.setProperty('--hover', 'rgba(168,85,247,.07)');
+
+      if (typeof tg.setBackgroundColor === 'function') { try { tg.setBackgroundColor(bg); } catch(e){} }
+      if (typeof tg.setHeaderColor === 'function')     { try { tg.setHeaderColor(bg); } catch(e){} }
+    }
+    applyTheme();
+    if (typeof tg.onEvent === 'function') tg.onEvent('themeChanged', applyTheme);
+
+    /* ---------------- Fullscreen toggle (desktop only) ---------------- */
+    const fsBtn = document.getElementById('fsBtn');
+    const fsExpand = document.getElementById('fsExpand');
+    const fsCompress = document.getElementById('fsCompress');
+    function updateFsIcon(){
+      const on = !!tg.isFullscreen;
+      fsExpand.style.display = on ? 'none' : 'block';
+      fsCompress.style.display = on ? 'block' : 'none';
+    }
+    fsBtn.onclick = () => {
+      if (typeof tg.requestFullscreen !== 'function'){
+        if (typeof tg.showAlert === 'function') tg.showAlert('Fullscreen is not supported on this Telegram version.');
+        return;
+      }
+      if (tg.isFullscreen) tg.exitFullscreen(); else tg.requestFullscreen();
+    };
+    if (typeof tg.onEvent === 'function') tg.onEvent('fullscreenChanged', updateFsIcon);
+    updateFsIcon();
+
+    /* ---------------- Helpers ---------------- */
+    const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    const escapeHtml = esc;
+    function haptic(type){ try { tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(type); } catch(e){} }
+    function notify(msg){ if (typeof tg.showAlert === 'function') tg.showAlert(msg); else alert(msg); }
+    function confirmThen(msg, cb){
+      if (typeof tg.showConfirm === 'function') tg.showConfirm(msg, ok => { if (ok) cb(); });
+      else if (confirm(msg)) cb();
+    }
+    let toastTimer;
+    function showToast(msg){
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+    // European number format everywhere: '.' groups thousands, ',' is the decimal mark
+    // (10000 -> "10.000,00"). Fixed 'de-DE' locale so the style is identical in EN and UK.
+    function euNum(n, dec){
+      const d = dec == null ? 2 : dec;
+      try { return new Intl.NumberFormat('de-DE', { minimumFractionDigits:d, maximumFractionDigits:d }).format(Number(n) || 0); }
+      catch(e){ return (Number(n) || 0).toFixed(d).replace('.', ','); }
+    }
+    function fmtNum(n){ return euNum(n, 2); }
+    function fmtDate(iso){
+      const d = new Date(iso + 'T00:00:00');
+      if (isNaN(d)) return iso;
+      try { return new Intl.DateTimeFormat(locale(), { day:'2-digit', month:'short', year:'numeric' }).format(d); }
+      catch(e){ return iso; }
+    }
+
+    /* ---------------- View switching (no page reload) ---------------- */
+    const views = {
+      new:      document.getElementById('view-new'),
+      table:    document.getElementById('view-table'),
+      dash:     document.getElementById('view-dash'),
+      settings: document.getElementById('view-settings')
+    };
+    const tabBtns = Array.from(document.querySelectorAll('.tab'));
+    // Settings is reachable only from the gear button, so it has no tab — when it's
+    // open every tab is inactive, and the previous view is remembered for "Back".
+    let lastMainView = 'new';
+    function showView(name){
+      Object.keys(views).forEach(k => { views[k].hidden = (k !== name); });
+      tabBtns.forEach(b => b.classList.toggle('active', b.dataset.view === name));
+      if (name !== 'settings') lastMainView = name;
+      if (name === 'table') reconcileTable();
+      if (name === 'dash'){ reconcileTable(); dashShow(); }
+      if (name === 'settings') renderDicts();
+    }
+    tabBtns.forEach(b => { b.onclick = () => showView(b.dataset.view); });
+    document.getElementById('settingsBtn').onclick = () => { showView('settings'); views.settings.scrollTop = 0; };
+    document.getElementById('settingsBackBtn').onclick = () => showView(lastMainView);
+
+    /* ---------------- Dropdowns (Type / Category / Counterparty / Provider) ---------------- */
+    const typeSel = document.getElementById('type');
+    const catSel  = document.getElementById('category');
+    const cpSel   = document.getElementById('counterparty');
+    const pvSel   = document.getElementById('provider');
+    let TYPES = [], CATS = [], CPS = [], PVS = [];
+
+    function fillSelect(sel, items){
+      const ph = `<option value="" disabled selected>${esc(t('ph.select'))}</option>`;
+      const sorted = items.slice().sort(byLocaleName);
+      sel.innerHTML = ph + sorted.map(o => `<option value="${esc(o.id)}">${esc(Lycee.pickName(o))}</option>`).join('');
+    }
+    // Comparator: order two reference objects by name, locale-aware so Cyrillic sorts
+    // correctly. Used by every name dropdown (type / category / counterparty /
+    // provider + their filters).
+    function byLocaleName(a, b){
+      return Lycee.pickName(a).localeCompare(Lycee.pickName(b), locale(), { sensitivity:'base' });
+    }
+    function refillSelects(){
+      if (!typeSel) return;
+      fillSelect(typeSel, TYPES); fillSelect(catSel, CATS);
+      fillSelect(cpSel, CPS); fillSelect(pvSel, PVS);
+      if (window.LyceeUI) LyceeUI.refreshAll();  // reflect new options in custom selects
+    }
+    async function loadOptions(){
+      if (!Lycee.configured){ const el = document.getElementById('themeHint'); if (el) el.textContent = t('hint.config'); return; }
+      try {
+        // Categories are type-scoped, so they're NOT loaded here — they're fetched
+        // on demand once a type is chosen (see loadCategoriesForType). Start empty.
+        const [types, cps, pvs] = await Promise.all([
+          Lycee.getTransactionTypes(), Lycee.getCounterparties(), Lycee.getProviders()
+        ]);
+        TYPES = types || []; CPS = cps || []; PVS = pvs || []; CATS = [];
+        refillSelects();
+      } catch(e){ console.error(e); showToast(t('toast.error')); }
+    }
+
+    // Fetch the categories belonging to the chosen transaction type and repopulate
+    // the category dropdown. Resets the current selection unless `keepValue` matches
+    // a still-valid category (used when pre-filling the edit form).
+    async function loadCategoriesForType(typeId, keepValue){
+      const prev = keepValue ? catSel.value : '';
+      if (!typeId){
+        CATS = [];
+      } else {
+        try { CATS = (await Lycee.getCategories(typeId)) || []; }
+        catch(e){ console.error(e); CATS = []; showToast(t('toast.error')); }
+      }
+      fillSelect(catSel, CATS);
+      if (prev && CATS.some(c => String(c.id) === String(prev))) catSel.value = prev;
+      else catSel.selectedIndex = 0; // back to the "Select…" placeholder
+      if (window.LyceeUI) LyceeUI.refreshAll();
+    }
+
+    // When the type changes, the previous category may no longer belong to it —
+    // reload the category list for the new type and clear the old selection.
+    if (typeSel) typeSel.addEventListener('change', () => {
+      loadCategoriesForType(parseInt(typeSel.value, 10) || 0, false);
+    });
+
+    /* ---------------- Transactions ---------------- */
+    let TX = Lycee.cachedTransactions() || [];
+    let txLoaded = !!Lycee.cachedTransactions();
+
+    // Money in vs out for the card accent + amount colour (uses the same classifiers
+    // as the dashboard: P&L first, then realised cash direction).
+    function txDir(tx){
+      const pl = txPL(tx); if (pl === 'income') return 'in'; if (pl === 'expense') return 'out';
+      return txCash(tx) === 'in' ? 'in' : 'out';
+    }
+    // Visual kind for the transaction list. Accrued receivables/payables move no cash, so
+    // they get a neutral, sign-less treatment (receivable = blue, payable = yellow) instead
+    // of the green +/red − used for realised cash movements. Settled legs stay in/out.
+    function txKind(tx){
+      const s = typeStr(tx);
+      if (/нарахован|accru/.test(s)){
+        if (/дебітор|receivable/.test(s)) return 'recv';  // receivable accrued → blue, no sign
+        if (/кредитор|payable/.test(s))   return 'pay';   // payable accrued → yellow, no sign
+      }
+      return txDir(tx); // 'in' | 'out'
+    }
+    function txSign(kind){ return kind === 'in' ? '+' : (kind === 'out' ? '−' : ''); }
+    function curSym(c){ return ({ USD:'$', EUR:'€', UAH:'₴', GBP:'£', PLN:'zł' })[c] || (c ? c + ' ' : ''); }
+
+    /* ---------------- Transactions filters + sum row ---------------- */
+    // Filter state for the Transactions table (empty string = no filter on that field).
+    const tableFilter = { type:'', cat:[], cp:[], pv:[], cur:'', from:'', to:'' };
+
+    // Distinct {id,name} reference objects present in TX for a given key.
+    function distinctRef(key){
+      const m = new Map();
+      TX.forEach(tx => { const o = tx[key]; if (o && o.id != null) m.set(String(o.id), o); });
+      return [...m.values()];
+    }
+    // Distinct currency codes present in TX.
+    function distinctCurrencies(){
+      const seen = []; TX.forEach(tx => { const c = tx.currency; if (c && seen.indexOf(c) === -1) seen.push(c); });
+      return seen.sort();
+    }
+    // Populate one filter <select> with an "All" option + the given {value,label} list,
+    // preserving the current selection when it's still available.
+    function fillFilterSelect(sel, items, current){
+      sel.innerHTML = `<option value="">${esc(t('tbl.f.all'))}</option>` +
+        items.map(it => `<option value="${esc(it.value)}"${String(it.value) === String(current) ? ' selected' : ''}>${esc(it.label)}</option>`).join('');
+      if (!items.some(it => String(it.value) === String(current))) sel.value = '';
+    }
+    // Multi-select fill (Category / Counterparty filters): no "All" option — an empty
+    // selection means "all". Re-marks the still-present options listed in `current`.
+    function fillMultiSelect(sel, items, current){
+      const cur = new Set((current || []).map(String));
+      sel.innerHTML = items.map(it =>
+        `<option value="${esc(it.value)}"${cur.has(String(it.value)) ? ' selected' : ''}>${esc(it.label)}</option>`
+      ).join('');
+    }
+    const selectedValues = (sel) => Array.from(sel.selectedOptions).map(o => o.value);
+    // Repopulate every filter control from the current TX set + reflect the filter state.
+    function syncTableFilters(){
+      const fType = document.getElementById('fType'), fCat = document.getElementById('fCat'),
+            fCp = document.getElementById('fCp'), fPv = document.getElementById('fPv'),
+            fCur = document.getElementById('fCur');
+      fillFilterSelect(fType, distinctRef('type').sort(byLocaleName).map(o => ({ value:o.id, label:Lycee.pickName(o) })), tableFilter.type);
+      fillMultiSelect(fCat,  distinctRef('category').sort(byLocaleName).map(o => ({ value:o.id, label:Lycee.pickName(o) })), tableFilter.cat);
+      fillMultiSelect(fCp,   distinctRef('counterparty').sort(byLocaleName).map(o => ({ value:o.id, label:Lycee.pickName(o) })), tableFilter.cp);
+      fillMultiSelect(fPv,   distinctRef('provider').sort(byLocaleName).map(o => ({ value:o.id, label:Lycee.pickName(o) })), tableFilter.pv);
+      fillFilterSelect(fCur,  distinctCurrencies().map(c => ({ value:c, label:c })), tableFilter.cur);
+      // A previously-selected option may have vanished (e.g. its last tx was deleted).
+      tableFilter.type = fType.value; tableFilter.cur = fCur.value;
+      tableFilter.cat = selectedValues(fCat); tableFilter.cp = selectedValues(fCp);
+      tableFilter.pv = selectedValues(fPv);
+      const fFrom = document.getElementById('fFrom'), fTo = document.getElementById('fTo');
+      fFrom.value = tableFilter.from; fTo.value = tableFilter.to;
+      syncDateField(fFrom); syncDateField(fTo);
+      if (window.LyceeUI) LyceeUI.refreshAll();
+    }
+    // The TX rows passing the active filters.
+    function filterTX(){
+      return TX.filter(tx => {
+        if (tableFilter.type && String(tx.type && tx.type.id) !== tableFilter.type) return false;
+        if (tableFilter.cat.length && !tableFilter.cat.includes(String(tx.category && tx.category.id))) return false;
+        if (tableFilter.cp.length && !tableFilter.cp.includes(String(tx.counterparty && tx.counterparty.id))) return false;
+        if (tableFilter.pv.length && !tableFilter.pv.includes(String(tx.provider && tx.provider.id))) return false;
+        if (tableFilter.cur && tx.currency !== tableFilter.cur) return false;
+        const iso = String(tx.occured_at || tx.date || '').slice(0,10);
+        if (tableFilter.from && !(iso && iso >= tableFilter.from)) return false;
+        if (tableFilter.to && !(iso && iso <= tableFilter.to)) return false;
+        return true;
+      });
+    }
+    // Does this transaction bring money IN? + : realised cash-in, accrued receivable, and a
+    // loan drawdown (accrued payable in the loan category — cash received against the new
+    // liability, "we got the money"). Every other accrued payable / realised cash-out is −.
+    function txIsInflow(tx){
+      const k = txKind(tx);
+      if (k === 'pay') return isLoanDrawdown(tx);
+      return k === 'in' || k === 'recv';
+    }
+    // Signed amount converted into `target` (UAH/USD/EUR). Uses the backend's per-tx
+    // total_uah/usd/eur (historical rates) like the dashboard, falling back to a flat rate.
+    function txSignedIn(tx, target){
+      const field = target === 'USD' ? 'total_usd' : (target === 'EUR' ? 'total_eur' : 'total_uah');
+      let v = tx[field];
+      if (v == null) v = convertAmount(tx.total, tx.currency || target, target);
+      const mag = Math.abs(Number(v) || 0);
+      return txIsInflow(tx) ? mag : -mag;
+    }
+    function sumChip(v, cur){
+      const sign = v < 0 ? '−' : '+';
+      return `<span class="sum-amt ${v < 0 ? 'neg' : 'pos'}">${sign}${esc(fmtNum(Math.abs(v)))} ${esc(curSym(cur))}</span>`;
+    }
+    // Combined total of the filtered rows — all transactions of all currencies converted and
+    // summed (like the dashboard), shown in each display currency → desktop tfoot + mobile card.
+    const SUM_CURRENCIES = ['UAH', 'USD', 'EUR'];
+    function renderTxSum(rows){
+      const foot = document.getElementById('rowsFoot'), sumEl = document.getElementById('txSum');
+      const totals = SUM_CURRENCIES.map(cur => rows.reduce((s, tx) => isPayableAccruedNonLoan(tx) ? s : s + txSignedIn(tx, cur), 0));
+      const chips = rows.length
+        ? SUM_CURRENCIES.map((cur, i) => sumChip(totals[i], cur)).join('')
+        : `<span class="sum-amt muted">—</span>`;
+      const label = `${esc(t('tbl.total'))} · ${rows.length}`;
+      const inner = `<span class="sum-label">${label}</span><span class="sum-vals">${chips}</span>`;
+      if (foot) foot.innerHTML = `<tr class="sum-row"><td colspan="9"><div class="sum-inner">${inner}</div></td></tr>`;
+      if (sumEl) sumEl.innerHTML = inner;
+    }
+
+    function renderTable(){
+      document.getElementById('countBadge').textContent = TX.length;
+      try { dashOnData(); } catch(e){}
+      const content = document.getElementById('content');
+      const empty = document.getElementById('empty');
+      if (!txLoaded) return; // nothing decided yet (no cache) → leave as-is until first fetch
+
+      if (!TX.length){
+        content.style.display = 'none';
+        empty.style.display = 'block';
+        document.getElementById('clearFiltersBtn').hidden = true;
+        document.getElementById('emptyEmoji').textContent = '🧾';
+        document.getElementById('emptyTitle').textContent = t('empty.title');
+        document.getElementById('emptyText').textContent = t('empty.text');
+        return;
+      }
+      content.style.display = 'block';
+      empty.style.display = 'none';
+
+      syncTableFilters();
+      const rows = filterTX();
+      // Reflect active-filter state on the clear button + the mobile toggle's count badge.
+      const isActiveFilter = (v) => Array.isArray(v) ? v.length > 0 : !!v;
+      const activeCount = ['type','cat','cp','pv','cur','from','to'].filter(k => isActiveFilter(tableFilter[k])).length;
+      document.getElementById('clearFiltersBtn').hidden = !activeCount;
+      const fc = document.getElementById('filtersCount');
+      fc.textContent = activeCount; fc.hidden = !activeCount;
+
+      // Filters matched nothing (but transactions do exist) → inline notice + empty sum.
+      if (!rows.length){
+        const note = `<div class="tx-noresults">${esc(t('tbl.noresults'))}</div>`;
+        document.getElementById('rows').innerHTML = `<tr><td colspan="9">${note}</td></tr>`;
+        document.getElementById('txCards').innerHTML = note;
+        renderTxSum(rows);
+        return;
+      }
+
+      document.getElementById('rows').innerHTML = rows.map(tx => {
+        const dir = txKind(tx);   // in | out | recv | pay — same classifier the cards use
+        const sign = txSign(dir);
+        return `
+        <tr class="${dir}" data-id="${escapeHtml(tx.id)}">
+          <td class="t-date">${fmtDate(tx.occured_at || tx.date)}</td>
+          <td class="t-total ${dir}">${sign}${fmtNum(tx.total)}</td>
+          <td><span class="cur-chip">${escapeHtml(tx.currency)}</span></td>
+          <td>${tx.type ? `<span class="cur-chip">${escapeHtml(Lycee.pickName(tx.type))}</span>` : '—'}</td>
+          <td>${tx.category ? `<span class="cur-chip">${escapeHtml(Lycee.pickName(tx.category))}</span>` : '—'}</td>
+          <td>${escapeHtml(Lycee.pickName(tx.counterparty) || '—')}</td>
+          <td>${escapeHtml(Lycee.pickName(tx.provider) || '—')}</td>
+          <td class="t-comment">${escapeHtml(tx.comment || '—')}</td>
+          <td class="act"><div class="row-actions">
+            <button class="edit" type="button" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+            <button class="del" type="button" aria-label="Delete">✕</button>
+          </div></td>
+        </tr>`;
+      }).join('');
+
+      // Card view (mobile) — same data, CSS toggles between this and the table.
+      document.getElementById('txCards').innerHTML = rows.map(tx => {
+        const dir = txKind(tx);
+        const sign = txSign(dir);
+        const cp = escapeHtml(Lycee.pickName(tx.counterparty) || '—');
+        const date = escapeHtml(fmtDate(tx.occured_at || tx.date));
+        const chips = [
+          tx.type ? `<span class="txc-chip">${escapeHtml(Lycee.pickName(tx.type))}</span>` : '',
+          tx.category ? `<span class="txc-chip">${escapeHtml(Lycee.pickName(tx.category))}</span>` : '',
+          tx.provider ? `<span class="txc-chip txc-chip-pv">${escapeHtml(Lycee.pickName(tx.provider))}</span>` : ''
+        ].join('');
+        const comment = tx.comment ? `<div class="txc-comment">${escapeHtml(tx.comment)}</div>` : '';
+        return `
+        <div class="tx-card ${dir}" data-id="${escapeHtml(tx.id)}">
+          <div class="txc-top">
+            <span class="txc-cp">${cp}</span>
+            <span class="txc-amt ${dir}">${sign}${fmtNum(tx.total)} ${escapeHtml(curSym(tx.currency))}</span>
+          </div>
+          <div class="txc-row2">
+            <span class="txc-date">${date}</span>
+            <span class="txc-acts">
+              <button class="edit" type="button" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              <button class="del" type="button" aria-label="Delete">✕</button>
+            </span>
+          </div>
+          <div class="txc-chips">${chips}</div>
+          ${comment}
+        </div>`;
+      }).join('');
+
+      renderTxSum(rows);
+    }
+
+    // Filter controls → update state + re-render. Selects (custom widget dispatches 'change').
+    [['fType','type'], ['fCat','cat'], ['fCp','cp'], ['fPv','pv'], ['fCur','cur']].forEach(([id, key]) => {
+      const el = document.getElementById(id); if (!el) return;
+      el.addEventListener('change', () => {
+        tableFilter[key] = el.multiple ? selectedValues(el) : el.value;
+        renderTable();
+      });
+    });
+    (function(){
+      const fFrom = document.getElementById('fFrom'), fTo = document.getElementById('fTo');
+      if (fFrom) fFrom.addEventListener('change', () => {
+        tableFilter.from = fFrom.value;
+        if (tableFilter.from && tableFilter.to && tableFilter.from > tableFilter.to) tableFilter.to = tableFilter.from;
+        renderTable();
+      });
+      if (fTo) fTo.addEventListener('change', () => {
+        tableFilter.to = fTo.value;
+        if (tableFilter.from && tableFilter.to && tableFilter.to < tableFilter.from) tableFilter.from = tableFilter.to;
+        renderTable();
+      });
+    })();
+    // Reset every filter to "All" / open dates.
+    (function(){
+      const btn = document.getElementById('clearFiltersBtn'); if (!btn) return;
+      btn.addEventListener('click', () => {
+        tableFilter.type = ''; tableFilter.cat = []; tableFilter.cp = []; tableFilter.pv = [];
+        tableFilter.cur = ''; tableFilter.from = ''; tableFilter.to = '';
+        renderTable();
+      });
+    })();
+    // Mobile: expand/collapse the filter panel (no-op visual on desktop, where it's always open).
+    (function(){
+      const tog = document.getElementById('filtersToggle'); if (!tog) return;
+      tog.addEventListener('click', () => {
+        const open = document.getElementById('content').classList.toggle('filters-open');
+        tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open && window.LyceeUI) LyceeUI.refreshAll();  // re-sync custom selects now shown
+      });
+    })();
+
+    // Silent reconcile — only re-render when the data actually differs.
+    async function reconcileTable(){
+      if (!Lycee.configured) return;
+      try {
+        const fresh = (await Lycee.getTransactions()) || [];
+        const changed = !txLoaded || JSON.stringify(fresh) !== JSON.stringify(TX);
+        TX = fresh; txLoaded = true;
+        if (changed) renderTable();
+        else document.getElementById('countBadge').textContent = TX.length;
+      } catch(e){ console.error(e); }
+    }
+
+    // Delegated on #content so both the table rows AND the mobile cards work.
+    const contentEl = document.getElementById('content');
+
+    // Delete a single transaction
+    contentEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.del');
+      if (!btn) return;
+      const host = btn.closest('[data-id]');
+      const id = host.dataset.id;
+      btn.disabled = true;
+      try {
+        await Lycee.deleteTransaction(id);
+        TX = TX.filter(tx => String(tx.id) !== String(id));
+        Lycee.setCachedTransactions(TX);
+        haptic('warning');
+        // Targeted O(1) update: drop the matching row + card (both views share the id)
+        // instead of re-rendering everything (that caused delete-spam lag).
+        if (!TX.length){
+          renderTable();                 // last one gone → show the empty state
+        } else {
+          contentEl.querySelectorAll('[data-id="' + id + '"]').forEach(el => el.remove());
+          document.getElementById('countBadge').textContent = TX.length;
+          renderTxSum(filterTX());       // keep the sum row in step with the removal
+          try { dashOnData(); } catch(e){} // repaint charts only if the dashboard is open
+        }
+      } catch(err){ console.error(err); btn.disabled = false; showToast(t('toast.error')); }
+    });
+
+    // Edit a single transaction → open the form pre-filled in edit mode
+    contentEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.edit');
+      if (!btn) return;
+      startEdit(btn.closest('[data-id]').dataset.id);
+    });
+
+    document.getElementById('clearBtn').onclick = () => {
+      if (!TX.length) return;
+      confirmThen(t('confirm.clear'), async () => {
+        try {
+          await Lycee.clearTransactions();
+          TX = []; Lycee.setCachedTransactions(TX);
+          haptic('success');
+          renderTable();
+          showToast(t('toast.cleared'));
+        } catch(e){ console.error(e); showToast(t('toast.error')); }
+      });
+    };
+
+    /* ---------------- New transaction form ---------------- */
+    const dateInput = document.getElementById('date');
+    const dateWrap  = document.getElementById('dateWrap');
+    // Toggle has-value AND fill the mobile overlay with the locale-formatted date (so the
+    // native picker reads with the Ukrainian "р." suffix on UA). fmtDate is locale-aware,
+    // so this re-runs on language switch via syncAllDateFields().
+    function syncDateField(input){
+      const field = input.closest('.date-field');
+      if (!field) return;
+      const has = !!input.value;
+      field.classList.toggle('has-value', has);
+      const lbl = field.querySelector('.date-value');
+      if (lbl) lbl.textContent = has ? fmtDate(input.value) : '';
+    }
+    function syncAllDateFields(){
+      document.querySelectorAll('input[type="date"]').forEach(syncDateField);
+    }
+    const syncDate = () => syncDateField(dateInput);
+    dateInput.addEventListener('input', syncDate);
+    dateInput.addEventListener('change', syncDate);
+
+    const createBtn = document.getElementById('createBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const formTitle = document.querySelector('#view-new .title');
+    const formSubtitle = document.querySelector('#view-new .subtitle');
+
+    let editingId = null;   // null = create mode; otherwise the id being edited
+
+    // id from a nested reference object ({id,name_*}) with a flat *_id fallback
+    function refId(obj, fallback){ return (obj && obj.id != null) ? obj.id : (fallback != null ? fallback : ''); }
+
+    function resetForm(){
+      document.getElementById('total').value = '';
+      document.getElementById('comment').value = '';
+      typeSel.selectedIndex = 0; cpSel.selectedIndex = 0; pvSel.selectedIndex = 0;
+      // No type selected → no categories. Empty the list, not just the selection.
+      CATS = []; fillSelect(catSel, CATS);
+      if (window.LyceeUI) LyceeUI.refreshAll();
+      validatePayable();  // clears the payable warning (no type/cp/total selected)
+    }
+
+    // Swap the form's labels between create / edit. Uses data-i18n so a later
+    // language toggle re-localizes correctly (applyI18n reads these attributes).
+    function setFormMode(editing){
+      formTitle.dataset.i18n    = editing ? 'form.edit.title'    : 'form.title';
+      formSubtitle.dataset.i18n = editing ? 'form.edit.subtitle' : 'form.subtitle';
+      createBtn.dataset.i18n    = editing ? 'btn.save'           : 'btn.create';
+      formTitle.textContent    = t(formTitle.dataset.i18n);
+      formSubtitle.textContent = t(formSubtitle.dataset.i18n);
+      createBtn.textContent    = t(createBtn.dataset.i18n);
+      cancelEditBtn.style.display = editing ? '' : 'none';
+    }
+
+    async function startEdit(id){
+      const tx = TX.find(x => String(x.id) === String(id));
+      if (!tx) return;
+      editingId = tx.id;
+      dateInput.value = String(tx.occured_at || tx.date || '').slice(0, 10);
+      syncDate();
+      document.getElementById('total').value = tx.total != null ? tx.total : '';
+      document.getElementById('currency').value = tx.currency || 'USD';
+      const typeId = refId(tx.type, tx.type_id);
+      typeSel.value = String(typeId);
+      // Load this type's categories before selecting, so the option exists in the list.
+      await loadCategoriesForType(parseInt(typeId, 10) || 0, false);
+      catSel.value  = String(refId(tx.category, tx.category_id));
+      cpSel.value   = String(refId(tx.counterparty, tx.counterparty_id));
+      // Provider is optional, so an empty id must land back on the "Оберіть…" placeholder
+      // rather than leaving whatever the previous edit selected.
+      const pvId = refId(tx.provider, tx.provider_id);
+      if (pvId === '' || pvId == null) pvSel.selectedIndex = 0; else pvSel.value = String(pvId);
+      document.getElementById('comment').value = tx.comment || '';
+      if (window.LyceeUI) LyceeUI.refreshAll();  // reflect pre-filled values in custom widgets
+      setFormMode(true);
+      validatePayable();  // re-check the payable rule for the row being edited
+      showView('new');
+      views.new.scrollTop = 0;
+    }
+
+    function cancelEdit(){ editingId = null; resetForm(); setFormMode(false); }
+    cancelEditBtn.onclick = () => { cancelEdit(); showView('table'); };
+
+    // Live, non-blocking guard: a "Payable settled" entry shouldn't make the total
+    // settled for a counterparty exceed what's been accrued (you'd be paying more than
+    // you owe). Compared in UAH-equivalent so mixed-currency ledgers still add up. The
+    // transaction is still allowed — this only surfaces a small warning.
+    function validatePayable(){
+      const warnEl = document.getElementById('payableWarn'); if (!warnEl) return;
+      warnEl.hidden = true;
+      const total = parseFloat(document.getElementById('total').value);
+      const currency = document.getElementById('currency').value;
+      const type_id = parseInt(typeSel.value, 10);
+      const cp_id = parseInt(cpSel.value, 10);
+      if (!type_id || !cp_id || isNaN(total) || total <= 0) return;
+      // The chosen type must be a "payable settled" type for the rule to apply.
+      const ty = TYPES.find(x => String(x.id) === String(type_id));
+      const s = refStr(ty);
+      if (!(/кредитор|payable/.test(s) && /погашен|settl/.test(s))) return;
+      // Sum this counterparty's existing payable accrued vs settled (excluding the row
+      // currently being edited, whose new values replace the old).
+      const toUah = tx => Math.abs(Number(tx.total_uah != null ? tx.total_uah : convertAmount(tx.total, tx.currency || 'UAH', 'UAH')) || 0);
+      let accrued = 0, settled = 0;
+      TX.forEach(tx => {
+        if (editingId != null && String(tx.id) === String(editingId)) return;
+        const cp = tx.counterparty; if (!cp || String(cp.id) !== String(cp_id)) return;
+        const ts = typeStr(tx); if (!/кредитор|payable/.test(ts)) return;
+        if (/нарахован|accru/.test(ts)) accrued += toUah(tx);
+        else if (/погашен|settl/.test(ts)) settled += toUah(tx);
+      });
+      const draftUah = Math.abs(convertAmount(total, currency || 'UAH', 'UAH'));
+      const over = (settled + draftUah) - accrued;
+      if (over > 0.005){
+        warnEl.textContent = '⚠ ' + t('warn.payable') + ' ' + fmtNum(over) + ' ' + CUR_SYMBOL.UAH;
+        warnEl.hidden = false;
+      }
+    }
+    // Re-validate live as the relevant fields change (custom selects dispatch 'change').
+    document.getElementById('total').addEventListener('input', validatePayable);
+    document.getElementById('currency').addEventListener('change', validatePayable);
+    typeSel.addEventListener('change', validatePayable);
+    cpSel.addEventListener('change', validatePayable);
+
+    createBtn.onclick = async () => {
+      const date = dateInput.value;
+      const total = parseFloat(document.getElementById('total').value);
+      const currency = document.getElementById('currency').value;
+      const type_id = parseInt(typeSel.value, 10);
+      const category_id = parseInt(catSel.value, 10);
+      const counterparty_id = parseInt(cpSel.value, 10);
+      const provider_id = parseInt(pvSel.value, 10) || null;   // optional
+      const comment = document.getElementById('comment').value.trim();
+
+      // Name exactly which required fields are missing, so the popup is specific
+      // (e.g. only the counterparty → "Please fill in: Counterparty").
+      const missing = [];
+      if (!date) missing.push(t('field.date'));
+      if (isNaN(total) || total <= 0) missing.push(t('field.total'));
+      if (!type_id) missing.push(t('field.type'));
+      if (!category_id) missing.push(t('field.category'));
+      if (!counterparty_id) missing.push(t('field.counterparty'));
+      if (missing.length){ notify(t('alert.missing') + ' ' + missing.join(', ')); return; }
+      if (!Lycee.configured){ notify(t('hint.config')); return; }
+
+      const payload = { occured_at: date, total, currency, type_id, category_id, counterparty_id, provider_id, comment };
+      createBtn.disabled = true;
+      try {
+        if (editingId != null){
+          await Lycee.updateTransaction(Object.assign({ id: editingId }, payload));
+          haptic('success');
+          cancelEdit();             // exit edit mode + clear the form
+          // Switch synchronously so the blank "Create" form never flashes between the form
+          // reset and the refresh. showView('table') refreshes the list itself, so we don't
+          // await reconcileTable() here (the extra await is what caused the visible delay).
+          showView('table');        // back to the list to see the change
+          showToast(t('toast.updated'));
+        } else {
+          await Lycee.createTransaction(payload);
+          haptic('success');
+          resetForm();
+          await reconcileTable();   // refresh cache + badge
+          showToast(t('toast.created'));
+        }
+      } catch(e){ console.error(e); haptic('error'); notify(t('toast.error')); }
+      finally { createBtn.disabled = false; }
+    };
+
+    /* ---------------- Settings › dictionaries (counterparties + providers) ----------------
+       Both lists work identically, so one config object per dictionary drives a single
+       set of render/add/delete handlers. `get()` returns the live array (CPS / PVS) and
+       `set()` writes it back, so the form dropdowns pick up changes immediately. */
+    const DICTS = {
+      cp: {
+        listId:'cpList', countId:'cpCount', inputId:'cpNew', addBtnId:'cpAddBtn',
+        emptyKey:'set.cp.empty', addedKey:'set.cp.added', deletedKey:'set.cp.deleted',
+        confirmKey:'set.confirm.cp', rowClass:'dict-cp',
+        get: () => CPS, set: (v) => { CPS = v; },
+        create: (name) => Lycee.createCounterparty(name),
+        remove: (id) => Lycee.deleteCounterparty(id)
+      },
+      pv: {
+        listId:'pvList', countId:'pvCount', inputId:'pvNew', addBtnId:'pvAddBtn',
+        emptyKey:'set.pv.empty', addedKey:'set.pv.added', deletedKey:'set.pv.deleted',
+        confirmKey:'set.confirm.pv', rowClass:'dict-pv',
+        get: () => PVS, set: (v) => { PVS = v; },
+        create: (name) => Lycee.createProvider(name),
+        remove: (id) => Lycee.deleteProvider(id)
+      }
+    };
+    const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>';
+
+    function renderDict(key){
+      const d = DICTS[key];
+      const list = document.getElementById(d.listId);
+      const items = d.get().slice().sort(byLocaleName);
+      document.getElementById(d.countId).textContent = items.length;
+      if (!items.length){
+        list.innerHTML = `<li class="dict-empty">${esc(t(d.emptyKey))}</li>`;
+        return;
+      }
+      list.innerHTML = items.map(o => `
+        <li class="dict-item" data-id="${esc(o.id)}">
+          <span class="dict-dot"></span>
+          <span class="dict-name">${esc(Lycee.pickName(o))}</span>
+          <button class="dict-del" type="button" data-dict="${esc(key)}" aria-label="${esc(t('btn.clear'))}">${TRASH_SVG}</button>
+        </li>`).join('');
+    }
+    function renderDicts(){ renderDict('cp'); renderDict('pv'); }
+
+    async function addDictEntry(key){
+      const d = DICTS[key];
+      const input = document.getElementById(d.inputId), btn = document.getElementById(d.addBtnId);
+      const name = input.value.trim();
+      if (!name) return;
+      if (!Lycee.configured){ notify(t('hint.config')); return; }
+      // Names are the only thing the user sees, so a case-insensitive duplicate is
+      // almost certainly a mistake — reject it client-side instead of creating a twin.
+      if (d.get().some(o => Lycee.pickName(o).toLowerCase() === name.toLowerCase())){
+        showToast(t('set.dup')); return;
+      }
+      btn.disabled = true;
+      try {
+        const created = await d.create(name);
+        if (created && created.id != null) d.set(d.get().concat([created]));
+        input.value = '';
+        renderDict(key);
+        refillSelects();          // the new entry is immediately pickable on the form
+        haptic('success');
+        showToast(t(d.addedKey));
+      } catch(e){ console.error(e); haptic('error'); showToast(t('toast.error')); }
+      finally { btn.disabled = false; input.focus(); }
+    }
+
+    function deleteDictEntry(key, id, btn){
+      const d = DICTS[key];
+      const entry = d.get().filter(o => String(o.id) === String(id))[0];
+      const name = Lycee.pickName(entry) || '';
+      confirmThen(t(d.confirmKey).replace('%s', name), async () => {
+        btn.disabled = true;
+        try {
+          await d.remove(id);
+          d.set(d.get().filter(o => String(o.id) !== String(id)));
+          renderDict(key);
+          refillSelects();
+          haptic('warning');
+          showToast(t(d.deletedKey));
+          // A deleted entry may still be referenced by existing rows (the FK is
+          // ON DELETE SET NULL), so pull the list again to reflect the cleared field.
+          reconcileTable();
+        } catch(e){ console.error(e); btn.disabled = false; haptic('error'); showToast(t('set.inuse')); }
+      });
+    }
+
+    Object.keys(DICTS).forEach(key => {
+      const d = DICTS[key];
+      document.getElementById(d.addBtnId).onclick = () => addDictEntry(key);
+      document.getElementById(d.inputId).addEventListener('keydown', (e) => {
+        if (e.key === 'Enter'){ e.preventDefault(); addDictEntry(key); }
+      });
+      document.getElementById(d.listId).addEventListener('click', (e) => {
+        const btn = e.target.closest('.dict-del');
+        if (!btn) return;
+        deleteDictEntry(key, btn.closest('[data-id]').dataset.id, btn);
+      });
+    });
+
+    /* ---------------- Dashboard (live charts built from the same TX list) ----------------
+       Mirrors the xlsx "Огляд" sheet: income vs expenses by month, net-profit dynamics,
+       cumulative cash balance, and expense/income structure by category. Everything is
+       derived from the live transactions, so it updates the moment a tx is added/removed. */
+    // Categorical palette anchored on the brand orange→purple ramp, with enough hue
+    // separation for the donut/bar-list to stay readable on white.
+    const DASH_PALETTE = ['#f97316','#a855f7','#2563eb','#16a34a','#e11d48','#7c3aed',
+                          '#0891b2','#d97706','#db2777','#4f46e5','#65a30d','#0ea5e9'];
+    // Neutral chart chrome for a light background.
+    const CHART_TEXT = '#3f3850', CHART_MUTED = '#6b6478', CHART_GRID = 'rgba(27,20,37,.09)';
+    const CUR_SYMBOL = { USD:'$', EUR:'€', UAH:'₴', GBP:'£', PLN:'zł' };
+    // Fallback cross-rates (UAH per 1 unit), mirroring the backend CURRENCY_RATES.
+    // The dashboard normally uses the backend's per-transaction total_uah/usd/eur
+    // (each converted with the historical rate for that tx's date); these flat rates
+    // are only used when a tx's date has no stored rate and the field comes back null.
+    const CUR_RATES_UAH = { USD: 44.9125, EUR: 51.4563, UAH: 1 };
+    function convertAmount(total, from, to){
+      const n = Number(total) || 0;
+      const r = CUR_RATES_UAH[from], q = CUR_RATES_UAH[to];
+      return (r && q) ? n * r / q : n; // unknown currency → leave as-is
+    }
+    const dashState = { currency:null, from:'', to:'', cats:null }; // from/to = '' (open); cats:null = all
+    let dashCharts = {};
+
+    // Money in the selected dashboard currency. `full=true` → exact European format
+    // ("10.000,00 ₴"), used by tooltips where there's room. `full` omitted/false → compact
+    // K/M abbreviation ("209,8K ₴"), used by KPI cards and P&L table cells so values fit on
+    // one line. Chart axis ticks use dashTick.
+    function dashMoney(v, full){
+      const cur = dashState.currency || 'UAH';
+      const sym = CUR_SYMBOL[cur] || cur || '';
+      const suf = sym ? ' ' + sym : '';
+      const sign = v < 0 ? '-' : '';
+      const a = Math.abs(v);
+      if (full) return sign + euNum(a, 2) + suf;
+      if (a >= 1e6) return sign + euNum(a / 1e6, 1) + 'M' + suf;
+      if (a >= 1e3) return sign + euNum(a / 1e3, 1) + 'K' + suf;
+      return sign + euNum(a, 0) + suf;
+    }
+    // Money for chart axis ticks — full number, no K/M abbreviation.
+    function dashTick(v){
+      const cur = dashState.currency || 'UAH';
+      const sym = CUR_SYMBOL[cur] || cur || '';
+      const sign = v < 0 ? '-' : '';
+      return sign + euNum(Math.abs(v), 0) + (sym ? ' ' + sym : '');
+    }
+
+    // Transaction type name, lowercased, for the keyword classifiers below. The
+    // regexes still carry their English alternatives so a ledger seeded in English
+    // (or older cached rows) keeps classifying correctly.
+    function typeStr(tx){ return refStr(tx.type); }
+    // Category name, lowercased (drives the investments/dividends KPIs + CF buckets).
+    function catStr(tx){ return refStr(tx.category); }
+    function refStr(ref){ return Lycee.pickName(ref).toLowerCase(); }
+    // P&L (accrual) classification — what counts as operating income / expense.
+    // Financing & transfers (loans, investments, dividends, and the settlement of
+    // receivables/payables) are NOT P&L, so they return '' and stay out of the
+    // income/expense charts. An accrued receivable IS revenue earned → income, and an
+    // accrued payable IS a cost incurred → expense (kept symmetric with pnlClass).
+    function txPL(tx){
+      const s = typeStr(tx);
+      if (/дохід|дохо|income|revenue|продаж|продано|sold|надходж/.test(s)) return 'income';
+      if (/витрат|expense|cost|собівар/.test(s)) return 'expense';
+      if (/(дебіторк|receivable).*(нарахован|accru)|(нарахован|accru).*(дебіторк|receivable)/.test(s)) return 'income';
+      if (/(кредиторк|payable).*(нарахован|accru)|(нарахован|accru).*(кредиторк|payable)/.test(s)) return 'expense';
+      return '';
+    }
+    // Cash-flow classification — did money actually move, and which way.
+    // Accrued (нараховано / accrued) entries moved no cash yet → ''.
+    function txCash(tx){
+      const s = typeStr(tx);
+      // Accrued entries move no cash yet → '' — EXCEPT a loan drawdown, where the cash is
+      // received now (it surfaces in the cash-flow statement under Financing).
+      if (/нарахован|accru/.test(s)) return isLoanDrawdown(tx) ? 'in' : '';
+      if (/дохід|дохо|income|revenue|продаж|продано|sold|надходж|отримано|отримання|received|receiv|дебітор|інвестиц|investment/.test(s)) return 'in';
+      if (/витрат|expense|cost|сплачен|виплачен|оплачен|paid|дивіденд|dividend|погашен/.test(s)) return 'out';
+      return 'out';
+    }
+    // P&L statement classification (accrual basis), mapping the 6 backend types:
+    //   Revenue = Дохід (income) + Дебіторка нарахована (receivable accrued)
+    //   Cost    = Витрати (expense) + Кредиторка нарахована (payable accrued)
+    // The settlement legs (Дебіторка / Кредиторка погашена) move cash but are not P&L, so
+    // they're excluded — accrued revenue/cost is counted once when earned/incurred.
+    function pnlClass(tx){
+      const s = typeStr(tx), accr = /нарахован|accru/.test(s);
+      if (/дохід|income|revenue/.test(s)) return 'rev';        // Дохід (income)
+      if (accr && /дебітор|receivable/.test(s)) return 'rev';  // Дебіторка нарахована
+      if (/витрат|expense/.test(s)) return 'cost';             // Витрати (expense)
+      if (accr && /кредитор|payable/.test(s)) return 'cost';   // Кредиторка нарахована
+      return '';
+    }
+    // Category keyword classifiers — refine the P&L (investments aren't income,
+    // dividends aren't an expense) and drive the cash-flow statement's buckets.
+    function catIsInvestment(tx){ return /інвестиц|investment/.test(catStr(tx)); }
+    function catIsDividend(tx){ return /дивіденд|dividend/.test(catStr(tx)); }
+    // Loan/credit principal (but NOT the interest line "% по Кредиту") — a financing
+    // movement, so it's kept out of the P&L just like investments are.
+    function catIsLoanPrincipal(tx){ const s = catStr(tx); return /кредит|loan|credit/.test(s) && !/%|відсот|interest/.test(s); }
+    // A loan drawn down is booked as "Кредиторка нарахована" (payable accrued) in the loan
+    // category. Unlike other accrued payables (goods/services taken on credit — a cost with
+    // no cash), the cash IS received now, so this single case ranks as money-in: a financing
+    // inflow in the cash-flow statement and a + in the transactions total.
+    function isLoanDrawdown(tx){
+      const s = typeStr(tx);
+      return /нарахован|accru/.test(s) && /кредитор|payable/.test(s) && catIsLoanPrincipal(tx);
+    }
+    // Payable accrued (Кредиторка нарахована) in a NON-loan category: goods/services taken on
+    // credit — a cost booked with no cash movement yet. Excluded from the transactions total
+    // (only the later settlement leg, when actually paid, moves cash and hits the total).
+    function isPayableAccruedNonLoan(tx){
+      const s = typeStr(tx);
+      return /нарахован|accru/.test(s) && /кредитор|payable/.test(s) && !catIsLoanPrincipal(tx);
+    }
+    // Receivable accrued in the goods category is treated as a balance-sheet movement, not
+    // revenue, so it's excluded from the P&L (it still counts in the receivables balance).
+    function isGoodsReceivableAccrued(tx){
+      const s = typeStr(tx);
+      return /нарахован|accru/.test(s) && /дебітор|receivable/.test(s) && /товар|goods/.test(catStr(tx));
+    }
+    // Cash-flow activity bucket for a transaction, by its category:
+    //   inv — investing  (investments, fixed assets)
+    //   fin — financing  (loan principal, dividends)
+    //   op  — operating  (everything else: sales, goods, salary … incl. loan interest)
+    function cfActivity(tx){
+      const s = catStr(tx);
+      if (catIsInvestment(tx) || /основн.{0,3}засоб|fixed\s*asset/.test(s)) return 'inv';
+      if (catIsDividend(tx)) return 'fin';
+      if (/кредит|loan|credit/.test(s) && !/%|відсот|interest/.test(s)) return 'fin';
+      return 'op';
+    }
+    // Canonical row order for P&L / cash-flow category rows (mirrors the spec ordering).
+    // Unknown categories fall to the end and sort by amount there.
+    const CAT_ORDER = [
+      /продаж|sales/, /товар|goods/, /зарплат|salary|payroll/, /логістик|logistic/,
+      /послуг|service/, /підписк|subscription/, /оренд|rent/, /комунал|utilit/,
+      /реклам|advertis|marketing/, /основн.{0,3}засоб|fixed\s*asset/,
+      /(%|відсот|interest)/, /податк|tax/, /кредит|loan|credit/, /дивіденд|dividend/, /інвестиц|investment/
+    ];
+    function catOrder(name){ const s = String(name).toLowerCase(); for (let i=0;i<CAT_ORDER.length;i++) if (CAT_ORDER[i].test(s)) return i; return 99; }
+    function txISO(tx){ return String(tx.occured_at || tx.date || '').slice(0,10); }
+    function txMonth(tx){ const d = txISO(tx); return d ? d.slice(0,7) : ''; } // YYYY-MM
+    function monthLabel(key){
+      const p = key.split('-'); const d = new Date(+p[0], (+p[1]||1)-1, 1);
+      try { return new Intl.DateTimeFormat(locale(), { month:'short', year:'2-digit' }).format(d); }
+      catch(e){ return key; }
+    }
+    function catName(tx){ return Lycee.pickName(tx.category) || t('dash.uncat'); }
+    function cpName(tx){ return Lycee.pickName(tx.counterparty) || t('dash.nocp'); }
+
+    // Currency filter options. Selecting one converts EVERY transaction into that
+    // currency (it no longer filters the rows). UAH is first → the default view.
+    function dashCurrencies(){
+      const list = ['UAH', 'USD', 'EUR'];
+      TX.forEach(tx => { const c = tx.currency; if (c && list.indexOf(c) === -1) list.push(c); });
+      return list;
+    }
+    // Every transaction is always in scope now — the currency filter changes the
+    // display/aggregation currency, not which rows are shown.
+    function dashCurRows(){ return TX.slice(); }
+    // Amount used for aggregation, in the selected dashboard currency. The backend
+    // pre-computes total_uah / total_usd / total_eur per transaction (using the
+    // historical rate for that tx's date), so we just pick the matching field. If
+    // that date has no stored rate the field is null → fall back to a flat client
+    // conversion so the transaction still contributes instead of vanishing.
+    function txAmount(tx){
+      const target = dashState.currency || 'UAH';
+      const field = target === 'USD' ? 'total_usd' : (target === 'EUR' ? 'total_eur' : 'total_uah');
+      let v = tx[field];
+      if (v == null) v = convertAmount(tx.total, tx.currency || target, target);
+      return Math.abs(Number(v) || 0);
+    }
+    function dashRows(){
+      let rows = dashCurRows();
+      // Date range filter (string compare works: both sides are YYYY-MM-DD). Either end may be open.
+      if (dashState.from) rows = rows.filter(tx => txISO(tx) && txISO(tx) >= dashState.from);
+      if (dashState.to)   rows = rows.filter(tx => txISO(tx) && txISO(tx) <= dashState.to);
+      if (dashState.cats) rows = rows.filter(tx => dashState.cats.has(catName(tx)));
+      return rows;
+    }
+
+    function dashSyncControls(){
+      const curs = dashCurrencies();
+      if (!dashState.currency || curs.indexOf(dashState.currency) === -1) dashState.currency = curs[0] || null;
+      const selC = document.getElementById('dashCurrency');
+      selC.innerHTML = curs.map(c => {
+        const labelC = CUR_SYMBOL[c] ? (c + ' (' + CUR_SYMBOL[c] + ')') : c;
+        return `<option value="${esc(c)}" ${c===dashState.currency?'selected':''}>${esc(labelC)}</option>`;
+      }).join('');
+
+      // Date-range bounds below span every transaction (all rows are always in scope;
+      // the currency filter converts amounts, it doesn't drop rows).
+      const inCur = dashCurRows();
+
+      // Date pickers — constrain to the min/max dates present, and reflect current state.
+      const dates = inCur.map(txISO).filter(Boolean).sort();
+      const minD = dates[0] || '', maxD = dates[dates.length - 1] || '';
+      const fromEl = document.getElementById('dashFrom'), toEl = document.getElementById('dashTo');
+      fromEl.min = minD; fromEl.max = maxD; toEl.min = minD; toEl.max = maxD;
+      fromEl.value = dashState.from || '';
+      toEl.value   = dashState.to   || '';
+      // Toggle the localized placeholder overlay + fill the mobile value overlay.
+      syncDateField(fromEl); syncDateField(toEl);
+      if (window.LyceeUI) LyceeUI.refreshAll();  // sync custom currency/date widgets
+    }
+
+    function dashAgg(){
+      const rows = dashRows();
+      const monthsObj = {};
+      rows.forEach(tx => { const k = txMonth(tx); if (k) monthsObj[k] = true; });
+      const months = Object.keys(monthsObj).sort();
+      const inc = {}, exp = {}, cashNet = {};
+      months.forEach(k => { inc[k] = 0; exp[k] = 0; cashNet[k] = 0; });
+      const expCat = {}; const expCp = {}; let totIn = 0, totOut = 0;
+      // Balance-sheet style KPIs (point 2): receivables / payables are the net of their
+      // accrued vs. settled legs; investments / dividends are summed by category.
+      let recvAccr = 0, recvSettled = 0, payAccr = 0, paySettled = 0, invest = 0, dividend = 0;
+      // P&L pivot (point 7): revenue = Дохід + Дебіторка нарахована; costs = Витрати + Кредиторка
+      // нарахована. Broken down by category × month for the statement table + waterfall.
+      // Investments are excluded from income; dividends are pulled out of expenses into
+      // their own line (an appropriation of profit), tracked per month in pnlDivTot.
+      const pnlInc = {}, pnlExp = {}, pnlIncTot = {}, pnlExpTot = {}, pnlDivTot = {};
+      // Cash-flow statement (direct method): realised cash movements, signed (+in / −out),
+      // grouped by category within operating / investing / financing activities.
+      const cfOp = {}, cfInv = {}, cfFin = {}, cfOpTot = {}, cfInvTot = {}, cfFinTot = {};
+      // Receivables / payables per counterparty (point 8).
+      const cpMap = {};
+      const bump = (obj, key, k, v) => { (obj[key] = obj[key] || {})[k] = (obj[key][k] || 0) + v; };
+      rows.forEach(tx => {
+        const k = txMonth(tx); if (!k) return;
+        const amt = txAmount(tx);
+        const c = catName(tx);
+        // Income / expense charts: operating P&L only. Investments, dividends and loan
+        // principal are financing/investing movements → kept out of these aggregates
+        // (dividends get their own P&L line below; the rest only show in cash flow).
+        const pl = txPL(tx);
+        const isInv = catIsInvestment(tx), isDiv = catIsDividend(tx), isLoan = catIsLoanPrincipal(tx);
+        const pnlExcl = isInv || isDiv || isLoan || isGoodsReceivableAccrued(tx);
+        if (pl === 'income' && !pnlExcl){ inc[k] += amt; totIn += amt; }
+        else if (pl === 'expense' && !pnlExcl){ exp[k] += amt; totOut += amt; expCat[c] = (expCat[c]||0) + amt; expCp[cpName(tx)] = (expCp[cpName(tx)]||0) + amt; }
+        // Cash-balance chart: every realised cash movement (incl. loans, dividends…).
+        const cd = txCash(tx);
+        if (cd === 'in') cashNet[k] += amt; else if (cd === 'out') cashNet[k] -= amt;
+        // Cash-flow statement: same realised movements, signed and bucketed by activity.
+        if (cd){
+          const sv = (cd === 'in' ? amt : -amt), act = cfActivity(tx);
+          const dst = act === 'inv' ? cfInv : (act === 'fin' ? cfFin : cfOp);
+          const tot = act === 'inv' ? cfInvTot : (act === 'fin' ? cfFinTot : cfOpTot);
+          bump(dst, c, k, sv); tot[k] = (tot[k] || 0) + sv;
+        }
+        // Receivables / payables (by transaction type) + investments / dividends (by category).
+        const ts = typeStr(tx), cstr = catStr(tx);
+        const accr = /нарахован|accru/.test(ts), settl = /погашен|settl/.test(ts);
+        const isRecv = /дебітор|receivable/.test(ts), isPay = /кредитор|payable/.test(ts);
+        if (isRecv){ if (accr) recvAccr += amt; else if (settl) recvSettled += amt; }
+        if (isPay){ if (accr) payAccr += amt; else if (settl) paySettled += amt; }
+        // Investment / dividends are both TYPES and CATEGORIES in the real data — match either.
+        if (/інвестиц|investment/.test(ts) || /інвестиц|investment/.test(cstr)) invest += amt;
+        if (/дивіденд|dividend/.test(ts)   || /дивіденд|dividend/.test(cstr))   dividend += amt;
+        // P&L pivot (accrual basis — see pnlClass). Investments + loan principal stay out
+        // of revenue and costs; dividends are split off into their own line (pnlDivTot).
+        const pc = pnlClass(tx);
+        if (pc === 'rev' && !pnlExcl){  bump(pnlInc, c, k, amt); pnlIncTot[k] = (pnlIncTot[k]||0) + amt; }
+        if (pc === 'cost' && !pnlExcl){ bump(pnlExp, c, k, amt); pnlExpTot[k] = (pnlExpTot[k]||0) + amt; }
+        if (pc === 'cost' && isDiv){ pnlDivTot[k] = (pnlDivTot[k]||0) + amt; }
+        // Per-counterparty balances.
+        if (isRecv || isPay){
+          const cp = cpName(tx);
+          const m = cpMap[cp] || (cpMap[cp] = { recvAccr:0, recvSettled:0, payAccr:0, paySettled:0 });
+          if (isRecv){ if (accr) m.recvAccr += amt; else if (settl) m.recvSettled += amt; }
+          if (isPay){ if (accr) m.payAccr += amt; else if (settl) m.paySettled += amt; }
+        }
+      });
+      const incA = months.map(k => inc[k]), expA = months.map(k => exp[k]);
+      const net = months.map((k,i) => incA[i] - expA[i]);
+      let run = 0; const cash = months.map(k => (run += cashNet[k]));
+      // Counterparty rows with a non-zero open balance, biggest exposure first.
+      const cpRows = Object.keys(cpMap).map(name => {
+        const m = cpMap[name];
+        return { name, payable: m.payAccr - m.paySettled, receivable: m.recvAccr - m.recvSettled };
+      }).filter(r => Math.round(r.payable) !== 0 || Math.round(r.receivable) !== 0)
+        .sort((a,b) => (Math.abs(b.payable)+Math.abs(b.receivable)) - (Math.abs(a.payable)+Math.abs(a.receivable)));
+      const pnlRev = months.reduce((s,k) => s + (pnlIncTot[k]||0), 0);
+      const pnlCost = months.reduce((s,k) => s + (pnlExpTot[k]||0), 0);
+      return { months, labels: months.map(monthLabel), inc: incA, exp: expA, net, cash, totIn, totOut, expCat, expCp,
+        receivable: recvAccr - recvSettled, payable: payAccr - paySettled, invest, dividend, count: rows.length,
+        pnlInc, pnlExp, pnlIncTot, pnlExpTot, pnlDivTot, pnlRev, pnlCost, cpRows,
+        cfOp, cfInv, cfFin, cfOpTot, cfInvTot, cfFinTot };
+    }
+
+    function dashTooltip(extra){
+      return Object.assign({
+        backgroundColor:'#ffffff', borderColor:'rgba(27,20,37,.12)', borderWidth:1,
+        padding:10, titleColor:'#1b1425', bodyColor:CHART_TEXT, usePointStyle:true
+      }, extra || {});
+    }
+    function dashAxisOpts(showLegend){
+      return {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{
+          legend:{ display:!!showLegend, position:'top', align:'end',
+            labels:{ usePointStyle:true, boxWidth:8, padding:12, font:{ size:11 }, color:CHART_TEXT } },
+          tooltip: dashTooltip({ callbacks:{ label:c => ' ' + c.dataset.label + ': ' + dashMoney(c.parsed.y, true) } })
+        },
+        scales:{
+          x:{ grid:{ display:false }, ticks:{ color:CHART_MUTED, font:{ size:11 } } },
+          y:{ grid:{ color:CHART_GRID }, ticks:{ color:CHART_MUTED, font:{ size:11 }, callback:v => dashTick(v) } }
+        }
+      };
+    }
+    function dashDonutOpts(){
+      return {
+        responsive:true, maintainAspectRatio:false, cutout:'60%',
+        plugins:{
+          legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:8, padding:10, font:{ size:11 }, color:CHART_TEXT } },
+          tooltip: dashTooltip({ callbacks:{ label:c => {
+            const tot = c.dataset.data.reduce((a,b)=>a+b,0) || 1;
+            return ' ' + c.label + ': ' + dashMoney(c.parsed, true) + ' (' + (c.parsed/tot*100).toFixed(1) + '%)';
+          } } })
+        }
+      };
+    }
+    function lineGradient(canvas, color){
+      const g = canvas.getContext('2d').createLinearGradient(0, 0, 0, 230);
+      g.addColorStop(0, color + '55'); g.addColorStop(1, color + '05'); return g;
+    }
+    // Donut slices from a {category: amount} map (with a grey "no data" placeholder).
+    function donutData(map){
+      const e = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+      if (!e.length) return { labels:[t('dash.none')], data:[1], colors:['rgba(27,20,37,.10)'] };
+      return { labels:e.map(x=>x[0]), data:e.map(x=>x[1]), colors:e.map((x,i)=>DASH_PALETTE[i%DASH_PALETTE.length]) };
+    }
+    // Horizontal bar-list from a {name: amount} map — top N counterparties, biggest first.
+    function topCpData(map, n){
+      const e = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0, n || 6);
+      if (!e.length) return { labels:[t('dash.none')], data:[0], colors:['rgba(27,20,37,.10)'] };
+      return { labels:e.map(x=>x[0]), data:e.map(x=>x[1]), colors:e.map((x,i)=>DASH_PALETTE[i%DASH_PALETTE.length]) };
+    }
+    function dashBarListOpts(){
+      return {
+        indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ display:false },
+          tooltip: dashTooltip({ callbacks:{ title:c => c[0] && c[0].label, label:c => ' ' + dashMoney(c.parsed.x, true) } })
+        },
+        scales:{
+          x:{ grid:{ color:CHART_GRID }, ticks:{ color:CHART_MUTED, font:{ size:11 }, callback:v => dashTick(v) } },
+          y:{ grid:{ display:false }, ticks:{ color:CHART_TEXT, font:{ size:11 },
+            callback:function(v){ const l = this.getLabelForValue(v); return l.length > 16 ? l.slice(0,15) + '…' : l; } } }
+        }
+      };
+    }
+    // P&L waterfall: revenue rises from 0, costs step it down (a floating bar), net is the
+    // remainder. `mags` holds each bar's magnitude for the tooltip (the bars are ranges).
+    function pnlData(a){
+      const R = a.pnlRev, C = a.pnlCost, net = R - C;
+      return {
+        labels: [t('dash.pnl.rev'), t('dash.pnl.cost'), t('dash.pnl.net')],
+        ranges: [[0, R], [R - C, R], net >= 0 ? [0, net] : [net, 0]],
+        colors: ['#16a34a', '#dc2626', net >= 0 ? '#7c3aed' : '#dc2626'],
+        mags: [R, C, net]
+      };
+    }
+    function dashWaterfallOpts(){
+      return {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ display:false },
+          tooltip: dashTooltip({ callbacks:{ label:c => ' ' + dashMoney((c.chart.$pnlMag || [])[c.dataIndex] || 0, true) } })
+        },
+        scales:{
+          x:{ grid:{ display:false }, ticks:{ color:CHART_MUTED, font:{ size:11 } } },
+          y:{ grid:{ color:CHART_GRID }, ticks:{ color:CHART_MUTED, font:{ size:11 }, callback:v => dashTick(v) } }
+        }
+      };
+    }
+
+    // Build the dashboard charts once (first paint / after returning from the empty state).
+    function createCharts(a){
+      const pnl = pnlData(a);
+      dashCharts.pnl = new Chart(document.getElementById('cPnl'), {
+        type:'bar',
+        data:{ labels:pnl.labels, datasets:[{ data:pnl.ranges, backgroundColor:pnl.colors, borderRadius:5, maxBarThickness:80 }] },
+        options: dashWaterfallOpts()
+      });
+      dashCharts.pnl.$pnlMag = pnl.mags;
+      const netCanvas = document.getElementById('cNet');
+      dashCharts.net = new Chart(netCanvas, {
+        type:'line',
+        data:{ labels:a.labels, datasets:[{ label:t('dash.c.net'), data:a.net,
+          borderColor:'#7c3aed', backgroundColor:lineGradient(netCanvas,'#7c3aed'),
+          fill:true, tension:.35, borderWidth:3, pointRadius:3, pointBackgroundColor:'#7c3aed', pointHoverRadius:6 }] },
+        options: dashAxisOpts(false)
+      });
+      const cashCanvas = document.getElementById('cCash');
+      dashCharts.cash = new Chart(cashCanvas, {
+        type:'line',
+        data:{ labels:a.labels, datasets:[{ label:t('dash.c.cash'), data:a.cash,
+          borderColor:'#f97316', backgroundColor:lineGradient(cashCanvas,'#f97316'),
+          fill:true, tension:.35, borderWidth:3, pointRadius:3, pointBackgroundColor:'#f97316', pointHoverRadius:6 }] },
+        options: dashAxisOpts(false)
+      });
+      const de = donutData(a.expCat);
+      dashCharts.exp = new Chart(document.getElementById('cExp'), {
+        type:'doughnut',
+        data:{ labels:de.labels, datasets:[{ data:de.data, backgroundColor:de.colors, borderColor:'#ffffff', borderWidth:2, hoverOffset:6 }] },
+        options: dashDonutOpts()
+      });
+      const tc = topCpData(a.expCp);
+      dashCharts.topcp = new Chart(document.getElementById('cTopCp'), {
+        type:'bar',
+        data:{ labels:tc.labels, datasets:[{ data:tc.data, backgroundColor:tc.colors, borderRadius:5, maxBarThickness:26 }] },
+        options: dashBarListOpts()
+      });
+    }
+
+    // Feed new data into the existing charts and let Chart.js animate the transition —
+    // no destroy/recreate, so filter/data changes morph smoothly instead of flashing.
+    // Labels are re-set too so a language switch updates legends in place.
+    function updateCharts(a){
+      const pnl = pnlData(a);
+      const pl = dashCharts.pnl;
+      pl.data.labels = pnl.labels;
+      pl.data.datasets[0].data = pnl.ranges; pl.data.datasets[0].backgroundColor = pnl.colors;
+      pl.$pnlMag = pnl.mags; pl.update();
+
+      const net = dashCharts.net;
+      net.data.labels = a.labels; net.data.datasets[0].label = t('dash.c.net'); net.data.datasets[0].data = a.net; net.update();
+
+      const cash = dashCharts.cash;
+      cash.data.labels = a.labels; cash.data.datasets[0].label = t('dash.c.cash'); cash.data.datasets[0].data = a.cash; cash.update();
+
+      const de = donutData(a.expCat);
+      const ce = dashCharts.exp;
+      ce.data.labels = de.labels; ce.data.datasets[0].data = de.data; ce.data.datasets[0].backgroundColor = de.colors; ce.update();
+
+      const tc = topCpData(a.expCp);
+      const ct = dashCharts.topcp;
+      ct.data.labels = tc.labels; ct.data.datasets[0].data = tc.data; ct.data.datasets[0].backgroundColor = tc.colors; ct.update();
+    }
+
+    function destroyCharts(){
+      Object.values(dashCharts).forEach(c => { try { c.destroy(); } catch(e){} });
+      dashCharts = {};
+    }
+
+    function renderDashKpis(a){
+      const net = a.totIn - a.totOut;
+      const cash = a.cash.length ? a.cash[a.cash.length-1] : 0;
+      const cards = [
+        ['dash.kpi.income',      dashMoney(a.totIn, false),      '#16a34a'],
+        ['dash.kpi.expenses',    dashMoney(a.totOut, false),     '#dc2626'],
+        ['dash.kpi.net',         dashMoney(net, false),          '#7c3aed'],
+        ['dash.kpi.cash',        dashMoney(cash, false),         '#f97316'],
+        ['dash.kpi.receivable',  dashMoney(a.receivable, false), '#2563eb'],
+        ['dash.kpi.payable',     dashMoney(a.payable, false),    '#d97706'],
+        ['dash.kpi.invest',      dashMoney(a.invest, false),     '#a855f7'],
+        ['dash.kpi.dividend',    dashMoney(a.dividend, false),   '#db2777']
+      ];
+      document.getElementById('dashKpis').innerHTML = cards.map(([k,val,acc]) =>
+        `<div class="kpi" style="--accent:${acc}"><div class="k-label">${esc(t(k))}</div><div class="k-val">${esc(val)}</div></div>`
+      ).join('');
+    }
+
+    // P&L card subtitle → live margin %.
+    function renderPnlSub(a){
+      const el = document.getElementById('pnlSub'); if (!el) return;
+      const m = a.pnlRev ? (a.pnlRev - a.pnlCost) / a.pnlRev * 100 : 0;
+      el.textContent = t('dash.pnl.margin') + ' ' + m.toFixed(1) + '%';
+    }
+
+    // One numeric cell (muted when zero so the matrix reads cleanly).
+    function pnlCell(v){ return `<td class="num${Math.round(v) ? '' : ' muted'}">${esc(dashMoney(v, false))}</td>`; }
+    // A signed numeric cell (green positive / red negative) for cash-flow figures.
+    function flowCell(v){ return `<td class="num${Math.round(v) ? (v < 0 ? ' neg' : ' pos') : ' muted'}">${esc(dashMoney(v, false))}</td>`; }
+    // A section subtotal row followed by its category rows, ordered per the spec
+    // (catOrder), falling back to amount for anything unrecognised. `cell` chooses the
+    // formatting (plain for P&L, signed for cash flow); `metric` ranks the fallback.
+    function pivotSection(label, totMap, catMap, months, cell, metric){
+      cell = cell || pnlCell; metric = metric || (v => v);
+      const per = months.map(m => totMap[m] || 0);
+      const total = per.reduce((s,v) => s + v, 0);
+      let html = `<tr class="r-section"><td class="rowlabel">${esc(label)}</td>${per.map(cell).join('')}${cell(total)}</tr>`;
+      Object.keys(catMap).map(name => {
+        const mp = catMap[name];
+        return { name, mp, tot: months.reduce((s,m) => s + (mp[m] || 0), 0), ord: catOrder(name) };
+      }).sort((x,y) => (x.ord - y.ord) || (metric(y.tot) - metric(x.tot))).forEach(c => {
+        html += `<tr class="r-cat"><td class="rowlabel">${esc(c.name)}</td>${months.map(m => cell(c.mp[m] || 0)).join('')}${cell(c.tot)}</tr>`;
+      });
+      return html;
+    }
+    // P&L statement pivot — Income + categories, Expenses + categories, then Net income,
+    // Dividends (after net income — an appropriation of profit) and Margin %.
+    function renderPnlTable(a){
+      const tbl = document.getElementById('pnlTable'); if (!tbl) return;
+      const months = a.months, labels = a.labels;
+      if (!months.length){ tbl.innerHTML = `<tbody><tr><td class="data-empty">${esc(t('dash.pnl.none'))}</td></tr></tbody>`; return; }
+      const head = `<thead><tr><th class="rowlabel">${esc(t('dash.pnl.title'))}</th>${
+        labels.map(l => `<th>${esc(l)}</th>`).join('')}<th>${esc(t('dash.pnl.total'))}</th></tr></thead>`;
+      let body = pivotSection(t('dash.pnl.income'),   a.pnlIncTot, a.pnlInc, months);
+      body    += pivotSection(t('dash.pnl.expenses'), a.pnlExpTot, a.pnlExp, months);
+      // Net income = income − expenses.
+      const net = months.map(m => (a.pnlIncTot[m] || 0) - (a.pnlExpTot[m] || 0));
+      const netTotal = net.reduce((s,v) => s + v, 0);
+      body += `<tr class="r-total r-net"><td class="rowlabel">${esc(t('dash.pnl.netincome'))}</td>${net.map(flowCell).join('')}${flowCell(netTotal)}</tr>`;
+      // Dividends — shown after net income, never inside the expense block.
+      const div = months.map(m => a.pnlDivTot[m] || 0);
+      const divTotal = div.reduce((s,v) => s + v, 0);
+      body += `<tr class="r-div"><td class="rowlabel">${esc(t('dash.pnl.dividends'))}</td>${div.map(pnlCell).join('')}${pnlCell(divTotal)}</tr>`;
+      // Margin % = net income / income (per month and overall).
+      const marginCell = (n, r) => {
+        if (!Math.round(r)) return `<td class="num muted">—</td>`;
+        const m = n / r * 100;
+        return `<td class="num${m < 0 ? ' neg' : ' pos'}">${esc(m.toFixed(1))}%</td>`;
+      };
+      body += `<tr class="r-margin"><td class="rowlabel">${esc(t('dash.pnl.marginpct'))}</td>${
+        months.map(m => marginCell((a.pnlIncTot[m] || 0) - (a.pnlExpTot[m] || 0), a.pnlIncTot[m] || 0)).join('')
+        }${marginCell(netTotal, a.pnlRev)}</tr>`;
+      tbl.innerHTML = head + '<tbody>' + body + '</tbody>';
+    }
+    // Cash-flow statement (direct method) — Operating / Investing / Financing activities,
+    // each a category breakdown with its net subtotal, then total Net cash flow.
+    function renderCashflowTable(a){
+      const tbl = document.getElementById('cfTable'); if (!tbl) return;
+      const months = a.months, labels = a.labels;
+      const hasData = Object.keys(a.cfOp).length || Object.keys(a.cfInv).length || Object.keys(a.cfFin).length;
+      if (!months.length || !hasData){ tbl.innerHTML = `<tbody><tr><td class="data-empty">${esc(t('dash.cf.none'))}</td></tr></tbody>`; return; }
+      const head = `<thead><tr><th class="rowlabel">${esc(t('dash.cf.title'))}</th>${
+        labels.map(l => `<th>${esc(l)}</th>`).join('')}<th>${esc(t('dash.pnl.total'))}</th></tr></thead>`;
+      const absMetric = v => Math.abs(v);
+      let body = '';
+      if (Object.keys(a.cfOp).length)  body += pivotSection(t('dash.cf.op'),  a.cfOpTot,  a.cfOp,  months, flowCell, absMetric);
+      if (Object.keys(a.cfInv).length) body += pivotSection(t('dash.cf.inv'), a.cfInvTot, a.cfInv, months, flowCell, absMetric);
+      if (Object.keys(a.cfFin).length) body += pivotSection(t('dash.cf.fin'), a.cfFinTot, a.cfFin, months, flowCell, absMetric);
+      const netM = months.map(m => (a.cfOpTot[m] || 0) + (a.cfInvTot[m] || 0) + (a.cfFinTot[m] || 0));
+      const netT = netM.reduce((s,v) => s + v, 0);
+      body += `<tr class="r-total r-net"><td class="rowlabel">${esc(t('dash.cf.net'))}</td>${netM.map(flowCell).join('')}${flowCell(netT)}</tr>`;
+      // Cumulative (running) cash flow — each month carries forward the prior months' net,
+      // so a column reads as the closing cash position at the end of that month. The Total
+      // column shows the final running balance (equal to the sum of all monthly net flows).
+      let cfRun = 0; const cumM = netM.map(v => (cfRun += v));
+      body += `<tr class="r-total"><td class="rowlabel">${esc(t('dash.cf.cum'))}</td>${cumM.map(flowCell).join('')}${flowCell(netT)}</tr>`;
+      tbl.innerHTML = head + '<tbody>' + body + '</tbody>';
+    }
+    // Receivables / payables per counterparty (net open balance), biggest first, with a total row.
+    function renderCpTable(a){
+      const tbl = document.getElementById('cpTable'); if (!tbl) return;
+      const rows = a.cpRows;
+      if (!rows.length){ tbl.innerHTML = `<tbody><tr><td class="data-empty">${esc(t('dash.cp.none'))}</td></tr></tbody>`; return; }
+      const head = `<thead><tr><th class="rowlabel">${esc(t('dash.cp.counterparty'))}</th>` +
+        `<th>${esc(t('dash.cp.payable'))}</th><th>${esc(t('dash.cp.receivable'))}</th></tr></thead>`;
+      const body = rows.map(r =>
+        `<tr><td class="rowlabel">${esc(r.name)}</td>` +
+        `<td class="num${Math.round(r.payable) ? ' neg' : ' muted'}">${esc(dashMoney(r.payable, false))}</td>` +
+        `<td class="num${Math.round(r.receivable) ? ' pos' : ' muted'}">${esc(dashMoney(r.receivable, false))}</td></tr>`
+      ).join('');
+      const totPay = rows.reduce((s,r) => s + r.payable, 0), totRecv = rows.reduce((s,r) => s + r.receivable, 0);
+      const foot = `<tr class="r-total"><td class="rowlabel">${esc(t('dash.pnl.total'))}</td>` +
+        `<td class="num">${esc(dashMoney(totPay, false))}</td><td class="num">${esc(dashMoney(totRecv, false))}</td></tr>`;
+      tbl.innerHTML = head + '<tbody>' + body + foot + '</tbody>';
+    }
+
+    function renderDashboard(){
+      if (!window.Chart) return;
+      const empty = document.getElementById('dashEmpty');
+      const content = document.getElementById('dashContent');
+      const kpis = document.getElementById('dashKpis');
+
+      if (!TX.length || !dashState.currency){
+        destroyCharts();
+        content.style.display = 'none'; kpis.style.display = 'none'; empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none'; content.style.display = 'block'; kpis.style.display = '';
+
+      const a = dashAgg();
+      renderDashKpis(a);
+      renderPnlSub(a);
+      renderPnlTable(a);
+      renderCashflowTable(a);
+      renderCpTable(a);
+      Chart.defaults.font.family = "Inter, system-ui, sans-serif";
+      Chart.defaults.color = CHART_MUTED;
+
+      // Update existing charts in place (smooth, animated) or build them on first paint.
+      if (Object.keys(dashCharts).length) updateCharts(a);
+      else createCharts(a);
+    }
+
+    // Called whenever the TX list changes (or language switches). Repaints live if the
+    // dashboard is on screen; otherwise the next dashShow() rebuilds it.
+    function dashOnData(){
+      if (!views.dash || views.dash.hidden) return;
+      dashSyncControls(); renderDashboard();
+    }
+    // Called when the dashboard tab becomes visible. Charts persist across tab switches
+    // now (no recreate), so re-fit them to the container in case the viewport changed
+    // while the tab was hidden.
+    function dashShow(){ dashSyncControls(); renderDashboard(); dashResizeSoon(); }
+
+    document.getElementById('dashCurrency').onchange = (e) => { dashState.currency = e.target.value; dashState.cats = null; dashSyncControls(); renderDashboard(); };
+    document.getElementById('dashFrom').onchange = (e) => {
+      dashState.from = e.target.value;
+      if (dashState.from && dashState.to && dashState.from > dashState.to) dashState.to = dashState.from;
+      dashSyncControls(); renderDashboard();
+    };
+    document.getElementById('dashTo').onchange = (e) => {
+      dashState.to = e.target.value;
+      if (dashState.from && dashState.to && dashState.to < dashState.from) dashState.from = dashState.to;
+      dashSyncControls(); renderDashboard();
+    };
+    // CTA → open the site in the system browser (a plain target=_blank anchor does this;
+    // we deliberately do NOT use tg.openLink, which routes through Telegram's in-app browser).
+
+    // Re-fit charts when the viewport changes. Telegram's fullscreen toggle (esp. desktop
+    // on→off) resizes the webview without always firing a resize Chart.js catches in time,
+    // leaving canvases clipped — so we explicitly resize after the transition settles.
+    let _dashResizeTimers = [];
+    function dashResizeSoon(){
+      _dashResizeTimers.forEach(clearTimeout);
+      const doResize = () => {
+        if (!window.Chart || !views.dash || views.dash.hidden) return;
+        Object.values(dashCharts).forEach(c => { try { c.resize(); } catch(e){} });
+      };
+      _dashResizeTimers = [setTimeout(doResize, 200), setTimeout(doResize, 550)];
+    }
+    if (typeof tg.onEvent === 'function'){
+      tg.onEvent('fullscreenChanged', dashResizeSoon);
+      tg.onEvent('viewportChanged', dashResizeSoon);
+    }
+    window.addEventListener('resize', dashResizeSoon);
+    // Most reliable trigger: observe the dashboard's own box, so charts re-fit on ANY
+    // size change (fullscreen exit, window resize, reflow) regardless of which event fires.
+    // Safe from loops — resizing the charts doesn't change #view-dash's own width/height.
+    if (window.ResizeObserver && views.dash){
+      try { new ResizeObserver(dashResizeSoon).observe(views.dash); } catch(e){}
+    }
+
+    /* ---------------- Init ---------------- */
+    if (window.LyceeUI) LyceeUI.enhanceAll();  // custom selects/date picker on desktop (no-op on touch)
+    applyI18n();
+    syncDate();
+    renderTable();           // instant paint from cache (badge + table)
+    showView('new');
+    (async () => {
+      try { await Lycee.ensureUser(); } catch(e){ console.error(e); }
+      await loadOptions();
+      reconcileTable();      // silent refresh
+    })();
+  </script>
+</body>
+</html>
