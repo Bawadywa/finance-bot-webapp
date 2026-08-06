@@ -6,10 +6,10 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Lycee</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./config.js?v=26"></script>
-  <script src="./api.js?v=26"></script>
-  <script src="./chart.umd.min.js?v=26"></script>
-  <script src="./ui.js?v=26"></script>
+  <script src="./config.js?v=29"></script>
+  <script src="./api.js?v=29"></script>
+  <script src="./chart.umd.min.js?v=29"></script>
+  <script src="./ui.js?v=29"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -559,9 +559,38 @@
     table.pivot .muted{ color:var(--hint); }
     .data-empty{ padding:1.125rem 0.25rem; color:var(--hint); font-size:0.84375rem; text-align:center; }
 
-    /* ---------- Settings › dictionaries (counterparties + providers) ---------- */
+    /* ---------- Settings ----------
+       Header (back · title) → segmented switcher → one section panel at a time. */
+    .set-head{ display:flex; align-items:center; gap:0.625rem; margin-bottom:0.875rem; }
+    .set-head .title{ font-size:1.375rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .set-back{
+      flex:none; width:2.25rem; height:2.25rem; margin:0; padding:0;
+      display:inline-flex; align-items:center; justify-content:center;
+      background:var(--card_bg); border:0.0625rem solid var(--border); border-radius:62.4375rem;
+      color:var(--text); cursor:pointer; transition:border-color .2s, color .2s, background .2s;
+    }
+    .set-back:hover{ border-color:var(--orange); color:var(--orange-dk); background:var(--hover); }
+    .set-back:active{ transform:translateY(0.0625rem); }
+    .set-back svg{ width:1.125rem; height:1.125rem; display:block; }
+
+    /* Segmented switcher — a smaller sibling of the main .tabs bar. */
+    .subtabs{
+      display:flex; gap:0.25rem; padding:0.25rem; margin-bottom:0.875rem;
+      background:var(--card_bg); border:0.0625rem solid var(--border);
+      border-radius:62.4375rem; box-shadow:0 0.0625rem 0.1875rem rgba(27,20,37,.05);
+    }
+    .subtab{
+      flex:1; min-width:0; width:auto; margin:0; padding:0.5rem 0.375rem;
+      border:none; background:transparent; border-radius:62.4375rem; cursor:pointer;
+      font-family:inherit; font-weight:700; font-size:0.75rem; color:var(--hint);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      transition:color .2s, background .2s;
+    }
+    .subtab:hover:not(.active){ color:var(--orange-dk); background:var(--hover); }
+    .subtab.active{ color:#fff; background:var(--grad); box-shadow:0 0.1875rem 0.5rem rgba(249,115,22,.24); }
+
+    /* ---------- Settings › section panels (accounts / counterparties / providers) ---------- */
     .dict-card{ margin-bottom:0.875rem; }
-    .dict-card + .dict-card{ margin-top:0.875rem; }
     .dict-head{ display:flex; align-items:center; gap:0.625rem; }
     .dict-head h3{ font-size:1rem; font-weight:800; flex:1; min-width:0; }
     .dict-count{
@@ -569,19 +598,38 @@
       min-width:1.5rem; height:1.5rem; padding:0 0.5rem; border-radius:62.4375rem;
       background:var(--hover); color:var(--purple-dk); font-size:0.75rem; font-weight:800;
     }
-    /* Add row: text field + a square gradient "+" button. */
-    .dict-add{ display:flex; gap:0.5rem; margin-top:0.75rem; }
-    .dict-add input{ flex:1; min-width:0; }
-    .dict-add-btn{
-      flex:none; width:2.875rem; height:2.875rem; padding:0; border:none; border-radius:var(--radius);
+    /* ＋ opens the add form and becomes ✕ (same glyph, rotated 45°) while it's open. */
+    .dict-add-toggle{
+      flex:none; width:2rem; height:2rem; margin:0; padding:0; border:none; border-radius:62.4375rem;
       background:var(--grad); color:#fff; cursor:pointer;
       display:inline-flex; align-items:center; justify-content:center;
+      box-shadow:0 0.1875rem 0.5rem rgba(249,115,22,.26);
+      transition:transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .dict-add-toggle:hover{ box-shadow:0 0.3125rem 0.875rem rgba(168,85,247,.32); filter:saturate(1.1); }
+    .dict-add-toggle[aria-expanded="true"]{ transform:rotate(45deg); }
+    .dict-add-toggle svg{ width:1.125rem; height:1.125rem; display:block; }
+
+    /* Add form — revealed by ＋, so the list stays the main content. */
+    .dict-form{
+      display:flex; gap:0.5rem; margin-top:0.875rem; padding-top:0.875rem;
+      border-top:0.0625rem solid var(--border);
+    }
+    .dict-form input{ flex:1; min-width:0; }
+    .dict-submit{
+      flex:none; width:auto; margin:0; padding:0 1.125rem; height:2.875rem;
+      border:none; border-radius:var(--radius); background:var(--grad); color:#fff;
+      font-family:inherit; font-weight:800; font-size:0.875rem; cursor:pointer; white-space:nowrap;
       box-shadow:0 0.25rem 0.75rem rgba(249,115,22,.26);
       transition:box-shadow .2s ease, filter .2s ease;
     }
-    .dict-add-btn:hover{ box-shadow:0 0.375rem 1rem rgba(168,85,247,.32); filter:saturate(1.1); }
-    .dict-add-btn:disabled{ opacity:.55; cursor:default; box-shadow:none; }
-    .dict-add-btn svg{ width:1.25rem; height:1.25rem; }
+    .dict-submit:hover{ box-shadow:0 0.375rem 1rem rgba(168,85,247,.32); filter:saturate(1.1); }
+    .dict-submit:disabled{ opacity:.55; cursor:default; box-shadow:none; }
+
+    /* Search — appears only once a list is long enough to need it. */
+    .dict-search{ margin-top:0.875rem; }
+    .dict-search input{ width:100%; }
+    .dict-search input[type="search"]::-webkit-search-cancel-button{ cursor:pointer; }
 
     .dict-list{ list-style:none; margin:0.875rem 0 0; padding:0; }
     .dict-item{
@@ -596,11 +644,40 @@
     .dict-cp .dict-dot{ background:var(--orange); }
     .dict-pv .dict-dot{ background:var(--purple); }
     .dict-acc .dict-dot{ background:var(--recv); }
-    /* Accounts carry an opening balance, so their add row has a second, narrow field. */
+    /* Accounts take a name, a currency and an opening balance — more than one row can hold on
+       a phone: name spans the top, then currency | balance | submit, hint underneath. */
+    .dict-form-acc{ display:grid; grid-template-columns:1fr 1fr auto; gap:0.5rem; align-items:center; }
+    .dict-form-acc .dict-add-name,
+    .dict-form-acc .field-hint{ grid-column:1 / -1; }
+    .dict-form-acc .dict-add-bal{ width:auto; }   /* fills its grid cell instead of a fixed width */
     .dict-add-bal{ flex:none; width:6.5rem; }
-    .dict-bal{ flex:none; font-size:0.8125rem; font-weight:700; color:var(--hint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .dict-bal{ flex:none; font-size:0.8125rem; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap; }
     .dict-bal.neg{ color:var(--neg); }
-    .dict-name{ flex:1; min-width:0; font-size:0.9375rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* Currency code chip on an account row — the balance next to it is then unit-less. */
+    .dict-chip{
+      flex:none; padding:0.125rem 0.4375rem; border-radius:0.375rem;
+      border:0.0625rem solid rgba(37,99,235,.30); background:rgba(37,99,235,.07);
+      color:var(--recv); font-size:0.625rem; font-weight:800; letter-spacing:.04em;
+    }
+    /* The name is a button: tapping it renames the entry in place. */
+    .dict-name{
+      flex:1; min-width:0; width:auto; margin:0; padding:0; text-align:left;
+      background:transparent; border:none; font-family:inherit; font-size:0.9375rem; font-weight:600;
+      color:var(--text); cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      border-bottom:0.0625rem dashed transparent; transition:color .15s ease, border-color .15s ease;
+    }
+    .dict-name:hover{ color:var(--purple-dk); border-bottom-color:rgba(168,85,247,.45); }
+    /* Rename mode: the row turns into a field with confirm / cancel. */
+    .dict-item.editing{ background:var(--hover); border-color:var(--border); }
+    .dict-rename{ flex:1; min-width:0; padding:0.4375rem 0.625rem; font-size:0.9375rem; }
+    .dict-ok, .dict-cancel{
+      flex:none; width:auto; margin:0; padding:0.375rem; background:transparent; border:none;
+      cursor:pointer; border-radius:0.5rem; line-height:1;
+      display:inline-flex; align-items:center; justify-content:center;
+    }
+    .dict-ok{ color:var(--pos); } .dict-ok:hover{ background:rgba(22,163,74,.10); }
+    .dict-cancel{ color:var(--hint); } .dict-cancel:hover{ color:var(--neg); background:rgba(220,38,38,.08); }
+    .dict-ok svg, .dict-cancel svg{ width:1.125rem; height:1.125rem; display:block; }
     .dict-del{
       flex:none; width:auto; margin:0; padding:0.375rem; background:transparent; border:none;
       color:var(--hint); cursor:pointer; border-radius:0.5rem; line-height:1;
@@ -758,7 +835,7 @@
               <select id="currency">
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
-                <option value="UAH">UAH</option>
+                <option value="USDT">USDT</option>
               </select>
             </div>
           </div>
@@ -986,69 +1063,97 @@
       </div>
     </section>
 
-    <!-- ============ SETTINGS › DICTIONARIES ============ -->
+    <!-- ============ SETTINGS › DICTIONARIES ============
+         One list at a time, chosen with the segmented switcher. All three sections share the
+         same anatomy — header (title · count · ＋) / add form / search / list — so a single
+         engine in the script drives them; only the account section adds extra fields. -->
     <section class="view" id="view-settings" hidden>
       <div class="col">
-        <div class="card dict-card">
+        <div class="set-head">
+          <button class="set-back" id="settingsBackBtn" type="button"
+                  data-i18n-title="set.back" title="Назад" data-i18n-aria="set.back" aria-label="Назад">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          </button>
           <h1 class="title gradient" data-i18n="set.title">Налаштування</h1>
-          <p class="subtitle" data-i18n="set.subtitle">Керуйте списками, з яких заповнюється форма.</p>
         </div>
 
-        <!-- Accounts (first: they scope the whole app from the top-bar picker) -->
-        <div class="card dict-card dict-acc">
+        <nav class="subtabs" id="setTabs">
+          <button class="subtab active" type="button" data-set="acc" data-i18n="set.acc.title">Рахунки</button>
+          <button class="subtab" type="button" data-set="cp" data-i18n="set.cp.title">Контрагенти</button>
+          <button class="subtab" type="button" data-set="pv" data-i18n="set.pv.title">Постачальники</button>
+        </nav>
+
+        <!-- Accounts -->
+        <div class="card dict-card dict-acc" id="setPanel-acc">
           <div class="dict-head">
             <h3 data-i18n="set.acc.title">Рахунки</h3>
             <span class="dict-count" id="accCount">0</span>
-          </div>
-          <div class="dict-add">
-            <input id="accNew" type="text" maxlength="15" autocomplete="off"
-                   data-i18n-ph="set.ph.acc" placeholder="Новий рахунок" />
-            <input id="accNewBal" class="dict-add-bal" type="number" inputmode="decimal" step="0.01"
-                   autocomplete="off" data-i18n-ph="set.ph.accbal" placeholder="0.00" />
-            <button class="dict-add-btn" id="accAddBtn" type="button" data-i18n-title="set.add" title="Додати">
+            <button class="dict-add-toggle" id="accAddToggle" type="button" aria-expanded="false"
+                    data-i18n-title="set.add" title="Додати" data-i18n-aria="set.add" aria-label="Додати">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             </button>
           </div>
-          <p class="hint field-hint" data-i18n="set.acc.hint">Баланс = початковий залишок (₴) плюс рух коштів на рахунку.</p>
+          <!-- Name on its own line, then currency + opening balance + submit. -->
+          <div class="dict-form dict-form-acc" id="accAddForm" hidden>
+            <input id="accNew" class="dict-add-name" type="text" maxlength="15" autocomplete="off"
+                   data-i18n-ph="set.ph.acc" placeholder="Новий рахунок" />
+            <select id="accNewCur" data-i18n-title="field.currency" title="Валюта">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="USDT">USDT</option>
+            </select>
+            <input id="accNewBal" class="dict-add-bal" type="number" inputmode="decimal" step="0.01"
+                   autocomplete="off" data-i18n-ph="set.ph.accbal" placeholder="0.00" />
+            <button class="dict-submit" id="accAddBtn" type="button" data-i18n="set.add">Додати</button>
+            <p class="hint field-hint" data-i18n="set.acc.hint">Баланс = початковий залишок у валюті рахунку плюс рух коштів на ньому.</p>
+          </div>
+          <div class="dict-search" id="accSearchWrap" hidden>
+            <input id="accSearch" type="search" autocomplete="off" data-i18n-ph="set.ph.search" placeholder="Пошук…" />
+          </div>
           <ul class="dict-list" id="accList"></ul>
         </div>
 
         <!-- Counterparties -->
-        <div class="card dict-card dict-cp">
+        <div class="card dict-card dict-cp" id="setPanel-cp" hidden>
           <div class="dict-head">
             <h3 data-i18n="set.cp.title">Контрагенти</h3>
             <span class="dict-count" id="cpCount">0</span>
-          </div>
-          <div class="dict-add">
-            <input id="cpNew" type="text" maxlength="30" autocomplete="off"
-                   data-i18n-ph="set.ph.cp" placeholder="Новий контрагент" />
-            <button class="dict-add-btn" id="cpAddBtn" type="button" data-i18n-title="set.add" title="Додати">
+            <button class="dict-add-toggle" id="cpAddToggle" type="button" aria-expanded="false"
+                    data-i18n-title="set.add" title="Додати" data-i18n-aria="set.add" aria-label="Додати">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             </button>
+          </div>
+          <div class="dict-form" id="cpAddForm" hidden>
+            <input id="cpNew" type="text" maxlength="30" autocomplete="off"
+                   data-i18n-ph="set.ph.cp" placeholder="Новий контрагент" />
+            <button class="dict-submit" id="cpAddBtn" type="button" data-i18n="set.add">Додати</button>
+          </div>
+          <div class="dict-search" id="cpSearchWrap" hidden>
+            <input id="cpSearch" type="search" autocomplete="off" data-i18n-ph="set.ph.search" placeholder="Пошук…" />
           </div>
           <ul class="dict-list" id="cpList"></ul>
         </div>
 
         <!-- Providers -->
-        <div class="card dict-card dict-pv">
+        <div class="card dict-card dict-pv" id="setPanel-pv" hidden>
           <div class="dict-head">
             <h3 data-i18n="set.pv.title">Постачальники</h3>
             <span class="dict-count" id="pvCount">0</span>
-          </div>
-          <div class="dict-add">
-            <input id="pvNew" type="text" maxlength="30" autocomplete="off"
-                   data-i18n-ph="set.ph.pv" placeholder="Новий постачальник" />
-            <button class="dict-add-btn" id="pvAddBtn" type="button" data-i18n-title="set.add" title="Додати">
+            <button class="dict-add-toggle" id="pvAddToggle" type="button" aria-expanded="false"
+                    data-i18n-title="set.add" title="Додати" data-i18n-aria="set.add" aria-label="Додати">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             </button>
           </div>
+          <div class="dict-form" id="pvAddForm" hidden>
+            <input id="pvNew" type="text" maxlength="30" autocomplete="off"
+                   data-i18n-ph="set.ph.pv" placeholder="Новий постачальник" />
+            <button class="dict-submit" id="pvAddBtn" type="button" data-i18n="set.add">Додати</button>
+          </div>
+          <div class="dict-search" id="pvSearchWrap" hidden>
+            <input id="pvSearch" type="search" autocomplete="off" data-i18n-ph="set.ph.search" placeholder="Пошук…" />
+          </div>
           <ul class="dict-list" id="pvList"></ul>
         </div>
-
-        <button class="btn-ghost" id="settingsBackBtn" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-          <span data-i18n="set.back">Назад</span>
-        </button>
       </div>
     </section>
   </main>
@@ -1187,9 +1292,12 @@
         'theme':'Тема',
         // Settings › dictionaries
         'btn.settings':'Налаштування',
-        'set.title':'Налаштування', 'set.subtitle':'Керуйте списками, з яких заповнюється форма.',
+        'set.title':'Налаштування',
         'set.cp.title':'Контрагенти', 'set.pv.title':'Постачальники',
         'set.ph.cp':'Новий контрагент', 'set.ph.pv':'Новий постачальник',
+        'set.ph.search':'Пошук…', 'set.nomatch':'Нічого не знайдено',
+        'set.save':'Зберегти', 'set.rename':'Перейменувати', 'set.renamed':'Назву змінено',
+        'set.rename.failed':'Не вдалося змінити назву',
         'set.add':'Додати', 'set.back':'Назад',
         'set.cp.empty':'Поки немає контрагентів. Додайте першого вище.',
         'set.pv.empty':'Поки немає постачальників. Додайте першого вище.',
@@ -1201,7 +1309,7 @@
         // Accounts
         'acc.all':'Усі рахунки', 'acc.empty':'Ще немає рахунків', 'acc.manage':'Керувати рахунками',
         'set.acc.title':'Рахунки', 'set.ph.acc':'Новий рахунок', 'set.ph.accbal':'0.00',
-        'set.acc.hint':'Баланс = початковий залишок (₴) плюс рух коштів на рахунку.',
+        'set.acc.hint':'Баланс = початковий залишок у валюті рахунку плюс рух коштів на ньому.',
         'set.acc.empty':'Поки немає рахунків. Додайте перший вище.',
         'set.acc.added':'Рахунок додано', 'set.acc.deleted':'Рахунок видалено',
         'set.confirm.acc':'Видалити рахунок «%s»? Його транзакції залишаться без рахунку.'
@@ -1366,23 +1474,30 @@
     }
     function setStoredAcc(v){ activeAcc = v; Lycee.setActiveAccount(v); }
 
-    // Cash actually moved on an account, in ₴. Accounts carry no currency of their own, so
-    // the opening balance is read as ₴ and each transaction contributes its historical-rate
-    // UAH value. Accrued-only rows moved no cash yet → txCash() returns '' and they're skipped.
-    function accCashUah(accId){
+    // The account's own currency — what its opening balance is denominated in, and the unit
+    // its balance is reported in. Falls back to the app's base currency for an account stored
+    // before accounts had a currency.
+    function accCur(acc){ return (acc && acc.currency) || 'USD'; }
+    // Cash actually moved on an account, in that account's currency. Each transaction is
+    // converted with the historical rate for its own date (see txAbsIn). Accrued-only rows
+    // moved no cash yet → txCash() returns '' and they're skipped.
+    function accCash(acc){
+      const cur = accCur(acc);
       return TX.reduce((s, tx) => {
-        if (String(txAccId(tx)) !== String(accId)) return s;
+        if (String(txAccId(tx)) !== String(acc.id)) return s;
         const dir = txCash(tx);
         if (!dir) return s;
-        const v = tx.total_uah != null ? tx.total_uah : convertAmount(tx.total, tx.currency || 'UAH', 'UAH');
-        return s + (dir === 'in' ? 1 : -1) * Math.abs(Number(v) || 0);
+        return s + (dir === 'in' ? 1 : -1) * txAbsIn(tx, cur);
       }, 0);
     }
-    function accBalance(acc){ return (Number(acc.balance) || 0) + accCashUah(acc.id); }
-    function accBalanceStr(acc){
+    function accBalance(acc){ return (Number(acc.balance) || 0) + accCash(acc); }
+    // Bare signed number — for rows that state the currency separately (Settings' chip).
+    function accBalanceNum(acc){
       const v = accBalance(acc);
-      return (v < 0 ? '−' : '') + fmtNum(Math.abs(v)) + ' ' + CUR_SYMBOL.UAH;
+      return (v < 0 ? '−' : '') + fmtNum(Math.abs(v));
     }
+    // With the unit attached — for the picker, where nothing else names the currency.
+    function accBalanceStr(acc){ return accBalanceNum(acc) + ' ' + curSym(accCur(acc)); }
 
     const ACC_CHECK = '<svg class="acc-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
     function accRow(val, name, bal, neg){
@@ -1423,7 +1538,12 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') accMenuOpen(false); });
     accMenu.addEventListener('click', (e) => {
       accMenuOpen(false);
-      if (e.target.closest('[data-manage]')){ showView('settings'); views.settings.scrollTop = 0; return; }
+      // "Manage accounts" → Settings, already on the Accounts section.
+      if (e.target.closest('[data-manage]')){
+        setTab = 'acc';
+        showView('settings'); views.settings.scrollTop = 0;
+        return;
+      }
       const opt = e.target.closest('[data-acc]');
       if (opt) selectAccount(opt.dataset.acc);
     });
@@ -1530,7 +1650,7 @@
       return txDir(tx); // 'in' | 'out'
     }
     function txSign(kind){ return kind === 'in' ? '+' : (kind === 'out' ? '−' : ''); }
-    function curSym(c){ return ({ USD:'$', EUR:'€', UAH:'₴', GBP:'£', PLN:'zł' })[c] || (c ? c + ' ' : ''); }
+    function curSym(c){ return CUR_SYMBOL[c] || (c ? c + ' ' : ''); }
 
     /* ---------------- Transactions filters + sum row ---------------- */
     // Filter state for the Transactions table (empty string = no filter on that field).
@@ -1605,13 +1725,9 @@
       if (k === 'pay') return isLoanDrawdown(tx);
       return k === 'in' || k === 'recv';
     }
-    // Signed amount converted into `target` (UAH/USD/EUR). Uses the backend's per-tx
-    // total_uah/usd/eur (historical rates) like the dashboard, falling back to a flat rate.
+    // Signed amount converted into `target`, using the historical-rate figures (see txAbsIn).
     function txSignedIn(tx, target){
-      const field = target === 'USD' ? 'total_usd' : (target === 'EUR' ? 'total_eur' : 'total_uah');
-      let v = tx[field];
-      if (v == null) v = convertAmount(tx.total, tx.currency || target, target);
-      const mag = Math.abs(Number(v) || 0);
+      const mag = txAbsIn(tx, target);
       return txIsInflow(tx) ? mag : -mag;
     }
     function sumChip(v, cur){
@@ -1620,7 +1736,8 @@
     }
     // Combined total of the filtered rows — all transactions of all currencies converted and
     // summed (like the dashboard), shown in each display currency → desktop tfoot + mobile card.
-    const SUM_CURRENCIES = ['UAH', 'USD', 'EUR'];
+    // USDT is 1:1 with USD, so listing it here would just repeat the USD column.
+    const SUM_CURRENCIES = ['USD', 'EUR'];
     function renderTxSum(rows){
       const foot = document.getElementById('rowsFoot'), sumEl = document.getElementById('txSum');
       const totals = SUM_CURRENCIES.map(cur => rows.reduce((s, tx) => isPayableAccruedNonLoan(tx) ? s : s + txSignedIn(tx, cur), 0));
@@ -1924,7 +2041,7 @@
 
     // Live, non-blocking guard: a "Payable settled" entry shouldn't make the total
     // settled for a counterparty exceed what's been accrued (you'd be paying more than
-    // you owe). Compared in UAH-equivalent so mixed-currency ledgers still add up. The
+    // you owe). Compared in USD-equivalent so mixed-currency ledgers still add up. The
     // transaction is still allowed — this only surfaces a small warning.
     function validatePayable(){
       const warnEl = document.getElementById('payableWarn'); if (!warnEl) return;
@@ -1940,20 +2057,20 @@
       if (!(/кредитор|payable/.test(s) && /погашен|settl/.test(s))) return;
       // Sum this counterparty's existing payable accrued vs settled (excluding the row
       // currently being edited, whose new values replace the old).
-      const toUah = tx => Math.abs(Number(tx.total_uah != null ? tx.total_uah : convertAmount(tx.total, tx.currency || 'UAH', 'UAH')) || 0);
+      const toUsd = tx => txAbsIn(tx, 'USD');
       let accrued = 0, settled = 0;
       // Scoped like every other view: what's owed is compared within the account in view.
       scopedTX().forEach(tx => {
         if (editingId != null && String(tx.id) === String(editingId)) return;
         const cp = tx.counterparty; if (!cp || String(cp.id) !== String(cp_id)) return;
         const ts = typeStr(tx); if (!/кредитор|payable/.test(ts)) return;
-        if (/нарахован|accru/.test(ts)) accrued += toUah(tx);
-        else if (/погашен|settl/.test(ts)) settled += toUah(tx);
+        if (/нарахован|accru/.test(ts)) accrued += toUsd(tx);
+        else if (/погашен|settl/.test(ts)) settled += toUsd(tx);
       });
-      const draftUah = Math.abs(convertAmount(total, currency || 'UAH', 'UAH'));
-      const over = (settled + draftUah) - accrued;
+      const draftUsd = Math.abs(convertAmount(total, currency || 'USD', 'USD'));
+      const over = (settled + draftUsd) - accrued;
       if (over > 0.005){
-        warnEl.textContent = '⚠ ' + t('warn.payable') + ' ' + fmtNum(over) + ' ' + CUR_SYMBOL.UAH;
+        warnEl.textContent = '⚠ ' + t('warn.payable') + ' ' + fmtNum(over) + ' ' + CUR_SYMBOL.USD;
         warnEl.hidden = false;
       }
     }
@@ -2014,163 +2131,220 @@
       finally { createBtn.disabled = false; }
     };
 
-    /* ---------------- Settings › dictionaries (counterparties + providers) ----------------
-       Both lists work identically, so one config object per dictionary drives a single
-       set of render/add/delete handlers. `get()` returns the live array (CPS / PVS) and
-       `set()` writes it back, so the form dropdowns pick up changes immediately. */
+    /* ---------------- Settings: three sections, one engine ----------------
+       Accounts, counterparties and providers share the same anatomy — header (title · count ·
+       ＋) / add form / search / list — and differ only in what a row shows and which API calls
+       back it. So one config object per section drives a single set of render / add / rename /
+       delete handlers. `get()` returns the live array and `set()` writes it back, so the
+       transaction form's dropdowns pick up every change immediately. */
     const DICTS = {
+      acc: {
+        maxLen:15,
+        listId:'accList', countId:'accCount', inputId:'accNew', addBtnId:'accAddBtn',
+        toggleId:'accAddToggle', formId:'accAddForm', searchId:'accSearch', searchWrapId:'accSearchWrap',
+        emptyKey:'set.acc.empty', addedKey:'set.acc.added', deletedKey:'set.acc.deleted',
+        confirmKey:'set.confirm.acc',
+        get: () => ACCS, set: (v) => { ACCS = v; Lycee.setCachedAccounts(v); },
+        create: (name) => {
+          const currency = document.getElementById('accNewCur').value || 'USD';
+          const bal = parseFloat(document.getElementById('accNewBal').value);
+          // The chosen currency rides along on the local object so the balance reads in the
+          // right unit immediately; it survives a reload once the backend returns `currency`.
+          return Lycee.createAccount(name, isNaN(bal) ? 0 : bal, currency).then(created =>
+            (created && created.id != null) ? Object.assign({ currency: currency }, created) : created);
+        },
+        remove: (id) => Lycee.deleteAccount(id),
+        rename: (id, name) => {
+          // PUT /account is a full replace, so resend the fields the rename doesn't touch.
+          // `balance` is the stored OPENING balance, never the computed live one.
+          const a = accById(id) || {};
+          return Lycee.updateAccount(id, {
+            name: name, balance: Number(a.balance) || 0, currency: accCur(a)
+          });
+        },
+        // Currency chip carries the unit, so the balance beside it is a bare number.
+        meta: (a) => `<span class="dict-chip">${esc(accCur(a))}</span>` +
+                     `<span class="dict-bal${accBalance(a) < 0 ? ' neg' : ''}">${esc(accBalanceNum(a))}</span>`,
+        clearForm: () => {   // currency stays put: the next account is likely the same
+          document.getElementById('accNew').value = '';
+          document.getElementById('accNewBal').value = '';
+        },
+        // First account ever → adopt it as the scope, so the form is usable without a detour.
+        onAdded: (created) => { if (ACCS.length === 1) setStoredAcc(String(created.id)); },
+        // Scope pointed at the deleted one → fall back to the first left, or "all accounts".
+        onRemoved: (id) => {
+          if (String(activeAcc) === String(id)) setStoredAcc(ACCS.length ? String(ACCS[0].id) : '');
+        },
+        // The picker's label/balances and every account-scoped view follow account changes.
+        after: () => { renderAccSwitch(); renderTable(); }
+      },
       cp: {
+        maxLen:30,
         listId:'cpList', countId:'cpCount', inputId:'cpNew', addBtnId:'cpAddBtn',
+        toggleId:'cpAddToggle', formId:'cpAddForm', searchId:'cpSearch', searchWrapId:'cpSearchWrap',
         emptyKey:'set.cp.empty', addedKey:'set.cp.added', deletedKey:'set.cp.deleted',
-        confirmKey:'set.confirm.cp', rowClass:'dict-cp',
+        confirmKey:'set.confirm.cp',
         get: () => CPS, set: (v) => { CPS = v; },
         create: (name) => Lycee.createCounterparty(name),
-        remove: (id) => Lycee.deleteCounterparty(id)
+        remove: (id) => Lycee.deleteCounterparty(id),
+        rename: (id, name) => Lycee.updateCounterparty(id, name),
+        meta: () => '',
+        clearForm: () => { document.getElementById('cpNew').value = ''; }
       },
       pv: {
+        maxLen:30,
         listId:'pvList', countId:'pvCount', inputId:'pvNew', addBtnId:'pvAddBtn',
+        toggleId:'pvAddToggle', formId:'pvAddForm', searchId:'pvSearch', searchWrapId:'pvSearchWrap',
         emptyKey:'set.pv.empty', addedKey:'set.pv.added', deletedKey:'set.pv.deleted',
-        confirmKey:'set.confirm.pv', rowClass:'dict-pv',
+        confirmKey:'set.confirm.pv',
         get: () => PVS, set: (v) => { PVS = v; },
         create: (name) => Lycee.createProvider(name),
-        remove: (id) => Lycee.deleteProvider(id)
+        remove: (id) => Lycee.deleteProvider(id),
+        rename: (id, name) => Lycee.updateProvider(id, name),
+        meta: () => '',
+        clearForm: () => { document.getElementById('pvNew').value = ''; }
       }
     };
     const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>';
+    const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    const CLOSE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+
+    let setTab = 'acc';                                // which section is on screen
+    const dictQuery = { acc:'', cp:'', pv:'' };        // per-section filter text
+    const dictEdit  = { acc:null, cp:null, pv:null };  // id of the row being renamed
+    const DICT_SEARCH_MIN = 10;                        // list length that earns a search box
 
     function renderDict(key){
       const d = DICTS[key];
+      const all = d.get();
+      const q = dictQuery[key].trim().toLowerCase();
+      const items = all.slice().sort(byLocaleName)
+        .filter(o => !q || Lycee.pickName(o).toLowerCase().indexOf(q) !== -1);
+      document.getElementById(d.countId).textContent = all.length;
+      // The filter only earns its place on a long list — but never disappears mid-search.
+      document.getElementById(d.searchWrapId).hidden = (all.length <= DICT_SEARCH_MIN && !q);
+
       const list = document.getElementById(d.listId);
-      const items = d.get().slice().sort(byLocaleName);
-      document.getElementById(d.countId).textContent = items.length;
       if (!items.length){
-        list.innerHTML = `<li class="dict-empty">${esc(t(d.emptyKey))}</li>`;
+        // Distinguish an empty section from a search that matched nothing.
+        list.innerHTML = `<li class="dict-empty">${esc(t(all.length ? 'set.nomatch' : d.emptyKey))}</li>`;
         return;
       }
-      list.innerHTML = items.map(o => `
-        <li class="dict-item" data-id="${esc(o.id)}">
-          <span class="dict-dot"></span>
-          <span class="dict-name">${esc(Lycee.pickName(o))}</span>
-          <button class="dict-del" type="button" data-dict="${esc(key)}" aria-label="${esc(t('btn.clear'))}">${TRASH_SVG}</button>
-        </li>`).join('');
-    }
-    function renderDicts(){ renderAccounts(); renderDict('cp'); renderDict('pv'); }
-
-    /* ---------------- Settings › accounts ----------------
-       Same shape as the dictionaries above, but an account also carries an opening balance,
-       so it gets its own add row (name + balance) and shows the live balance per row. */
-    function renderAccounts(){
-      const list = document.getElementById('accList');
-      const items = ACCS.slice().sort(byLocaleName);
-      document.getElementById('accCount').textContent = items.length;
-      if (!items.length){
-        list.innerHTML = `<li class="dict-empty">${esc(t('set.acc.empty'))}</li>`;
-        return;
+      list.innerHTML = items.map(o => String(dictEdit[key]) === String(o.id)
+        ? `<li class="dict-item editing" data-id="${esc(o.id)}">
+             <input class="dict-rename" type="text" maxlength="${esc(d.maxLen)}" value="${esc(Lycee.pickName(o))}" />
+             <button class="dict-ok" type="button" aria-label="${esc(t('set.save'))}">${CHECK_SVG}</button>
+             <button class="dict-cancel" type="button" aria-label="${esc(t('btn.cancel'))}">${CLOSE_SVG}</button>
+           </li>`
+        : `<li class="dict-item" data-id="${esc(o.id)}">
+             <span class="dict-dot"></span>
+             <button class="dict-name" type="button" title="${esc(t('set.rename'))}">${esc(Lycee.pickName(o))}</button>
+             ${d.meta(o)}
+             <button class="dict-del" type="button" aria-label="${esc(t('btn.clear'))}">${TRASH_SVG}</button>
+           </li>`).join('');
+      // Renaming → put the caret at the end of the name, ready to edit.
+      if (dictEdit[key] != null){
+        const inp = list.querySelector('.dict-rename');
+        if (inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
       }
-      list.innerHTML = items.map(a => `
-        <li class="dict-item" data-id="${esc(a.id)}">
-          <span class="dict-dot"></span>
-          <span class="dict-name">${esc(Lycee.pickName(a))}</span>
-          <span class="dict-bal${accBalance(a) < 0 ? ' neg' : ''}">${esc(accBalanceStr(a))}</span>
-          <button class="dict-del" type="button" aria-label="${esc(t('btn.clear'))}">${TRASH_SVG}</button>
-        </li>`).join('');
     }
+    function renderDicts(){ Object.keys(DICTS).forEach(renderDict); setSettingsTab(setTab); }
 
-    async function addAccount(){
-      const nameEl = document.getElementById('accNew'), balEl = document.getElementById('accNewBal');
-      const btn = document.getElementById('accAddBtn');
-      const name = nameEl.value.trim();
-      const balance = parseFloat(balEl.value);
-      if (!name) return;
-      if (!Lycee.configured){ notify(t('hint.config')); return; }
-      if (ACCS.some(a => Lycee.pickName(a).toLowerCase() === name.toLowerCase())){ showToast(t('set.dup')); return; }
-      btn.disabled = true;
-      try {
-        const created = await Lycee.createAccount(name, isNaN(balance) ? 0 : balance);
-        if (created && created.id != null){
-          ACCS = ACCS.concat([created]);
-          Lycee.setCachedAccounts(ACCS);
-          // First account ever → make it the scope straight away, so the form is usable
-          // without a detour through the picker.
-          if (ACCS.length === 1) setStoredAcc(String(created.id));
-        }
-        nameEl.value = ''; balEl.value = '';
-        renderAccounts(); renderAccSwitch();
-        refillSelects();          // immediately pickable on the transaction form
-        renderTable();            // the scope may have just changed
-        haptic('success');
-        showToast(t('set.acc.added'));
-      } catch(e){ console.error(e); haptic('error'); showToast(t('toast.error')); }
-      finally { btn.disabled = false; nameEl.focus(); }
-    }
-
-    function deleteAccountEntry(id, btn){
-      const entry = ACCS.filter(a => String(a.id) === String(id))[0];
-      confirmThen(t('set.confirm.acc').replace('%s', Lycee.pickName(entry) || ''), async () => {
-        btn.disabled = true;
-        try {
-          await Lycee.deleteAccount(id);
-          ACCS = ACCS.filter(a => String(a.id) !== String(id));
-          Lycee.setCachedAccounts(ACCS);
-          // The scope was pointing at it → fall back to the first account left, or "all".
-          if (String(activeAcc) === String(id)) setStoredAcc(ACCS.length ? String(ACCS[0].id) : '');
-          renderAccounts(); renderAccSwitch(); refillSelects();
-          haptic('warning');
-          showToast(t('set.acc.deleted'));
-          // Its transactions survive with account_id cleared (the FK is ON DELETE SET NULL),
-          // so refetch instead of leaving the deleted account on each row.
-          reconcileTable();
-        } catch(e){ console.error(e); btn.disabled = false; haptic('error'); showToast(t('set.inuse')); }
+    // Show one section, and leave the others tidy (no half-open form, no pending rename).
+    function setSettingsTab(key){
+      setTab = key;
+      Object.keys(DICTS).forEach(k => {
+        document.getElementById('setPanel-' + k).hidden = (k !== key);
+        if (k !== key){ dictEdit[k] = null; toggleDictForm(k, false); }
       });
+      document.querySelectorAll('.subtab').forEach(b => b.classList.toggle('active', b.dataset.set === key));
+      renderDict(key);
     }
-
-    document.getElementById('accAddBtn').onclick = () => addAccount();
-    ['accNew', 'accNewBal'].forEach(id => {
-      document.getElementById(id).addEventListener('keydown', (e) => {
-        if (e.key === 'Enter'){ e.preventDefault(); addAccount(); }
-      });
-    });
-    document.getElementById('accList').addEventListener('click', (e) => {
-      const btn = e.target.closest('.dict-del');
-      if (!btn) return;
-      deleteAccountEntry(btn.closest('[data-id]').dataset.id, btn);
-    });
+    // ＋ reveals the add form (and becomes ✕); called with no `open` it flips the current state.
+    function toggleDictForm(key, open){
+      const d = DICTS[key];
+      const form = document.getElementById(d.formId), tog = document.getElementById(d.toggleId);
+      const show = (open == null) ? form.hidden : open;
+      form.hidden = !show;
+      tog.setAttribute('aria-expanded', show ? 'true' : 'false');
+      if (show) document.getElementById(d.inputId).focus();
+    }
+    // Case-insensitive duplicate guard. `exceptId` lets a rename keep its own name.
+    function dictHasName(key, name, exceptId){
+      const n = name.toLowerCase();
+      return DICTS[key].get().some(o =>
+        String(o.id) !== String(exceptId) && Lycee.pickName(o).toLowerCase() === n);
+    }
 
     async function addDictEntry(key){
       const d = DICTS[key];
       const input = document.getElementById(d.inputId), btn = document.getElementById(d.addBtnId);
       const name = input.value.trim();
-      if (!name) return;
+      if (!name){ input.focus(); return; }
       if (!Lycee.configured){ notify(t('hint.config')); return; }
-      // Names are the only thing the user sees, so a case-insensitive duplicate is
-      // almost certainly a mistake — reject it client-side instead of creating a twin.
-      if (d.get().some(o => Lycee.pickName(o).toLowerCase() === name.toLowerCase())){
-        showToast(t('set.dup')); return;
-      }
+      // Names are the only thing the user sees, so a case-insensitive duplicate is almost
+      // certainly a mistake — reject it client-side instead of creating a twin.
+      if (dictHasName(key, name)){ showToast(t('set.dup')); return; }
       btn.disabled = true;
       try {
         const created = await d.create(name);
-        if (created && created.id != null) d.set(d.get().concat([created]));
-        input.value = '';
+        if (created && created.id != null){
+          d.set(d.get().concat([created]));
+          if (d.onAdded) d.onAdded(created);
+        }
+        d.clearForm();              // form stays open, ready for the next entry
         renderDict(key);
-        refillSelects();          // the new entry is immediately pickable on the form
+        refillSelects();            // immediately pickable on the transaction form
+        if (d.after) d.after();
         haptic('success');
         showToast(t(d.addedKey));
       } catch(e){ console.error(e); haptic('error'); showToast(t('toast.error')); }
-      finally { btn.disabled = false; input.focus(); }
+      finally { btn.disabled = false; document.getElementById(d.inputId).focus(); }
+    }
+
+    async function renameDictEntry(key, id){
+      const d = DICTS[key];
+      const input = document.getElementById(d.listId).querySelector('.dict-item[data-id="' + id + '"] .dict-rename');
+      const entry = d.get().filter(o => String(o.id) === String(id))[0];
+      if (!input || !entry) return;
+      const name = input.value.trim();
+      // Blank or unchanged → nothing to save, just leave edit mode.
+      if (!name || name === Lycee.pickName(entry)){ dictEdit[key] = null; renderDict(key); return; }
+      if (dictHasName(key, name, id)){ showToast(t('set.dup')); input.focus(); return; }
+      input.disabled = true;
+      try {
+        const updated = await d.rename(id, name);
+        // Trust the server's echo when it sends one, otherwise apply the typed name.
+        d.set(d.get().map(o => String(o.id) === String(id)
+          ? Object.assign({}, o, (updated && updated.id != null) ? updated : { name: name })
+          : o));
+        dictEdit[key] = null;
+        renderDict(key);
+        refillSelects();
+        if (d.after) d.after();
+        haptic('success');
+        showToast(t('set.renamed'));
+        // Transactions embed the renamed object, so refetch to show the new label on them.
+        reconcileTable();
+      } catch(e){
+        // Leaves the row in edit mode with the typed text intact, so nothing is lost.
+        console.error(e); input.disabled = false; haptic('error'); showToast(t('set.rename.failed'));
+      }
     }
 
     function deleteDictEntry(key, id, btn){
       const d = DICTS[key];
       const entry = d.get().filter(o => String(o.id) === String(id))[0];
-      const name = Lycee.pickName(entry) || '';
-      confirmThen(t(d.confirmKey).replace('%s', name), async () => {
+      confirmThen(t(d.confirmKey).replace('%s', Lycee.pickName(entry) || ''), async () => {
         btn.disabled = true;
         try {
           await d.remove(id);
           d.set(d.get().filter(o => String(o.id) !== String(id)));
+          if (d.onRemoved) d.onRemoved(id);
+          dictEdit[key] = null;
           renderDict(key);
           refillSelects();
+          if (d.after) d.after();
           haptic('warning');
           showToast(t(d.deletedKey));
           // A deleted entry may still be referenced by existing rows (the FK is
@@ -2180,16 +2354,38 @@
       });
     }
 
+    document.getElementById('setTabs').addEventListener('click', (e) => {
+      const b = e.target.closest('.subtab');
+      if (b) setSettingsTab(b.dataset.set);
+    });
+
     Object.keys(DICTS).forEach(key => {
       const d = DICTS[key];
+      document.getElementById(d.toggleId).onclick = () => toggleDictForm(key);
       document.getElementById(d.addBtnId).onclick = () => addDictEntry(key);
       document.getElementById(d.inputId).addEventListener('keydown', (e) => {
         if (e.key === 'Enter'){ e.preventDefault(); addDictEntry(key); }
+        else if (e.key === 'Escape'){ toggleDictForm(key, false); }
       });
-      document.getElementById(d.listId).addEventListener('click', (e) => {
-        const btn = e.target.closest('.dict-del');
-        if (!btn) return;
-        deleteDictEntry(key, btn.closest('[data-id]').dataset.id, btn);
+      const search = document.getElementById(d.searchId);
+      search.addEventListener('input', () => { dictQuery[key] = search.value; renderDict(key); });
+      const list = document.getElementById(d.listId);
+      list.addEventListener('click', (e) => {
+        const host = e.target.closest('[data-id]');
+        if (!host) return;
+        const id = host.dataset.id;
+        const del = e.target.closest('.dict-del');
+        if (del){ deleteDictEntry(key, id, del); return; }
+        if (e.target.closest('.dict-ok')){ renameDictEntry(key, id); return; }
+        if (e.target.closest('.dict-cancel')){ dictEdit[key] = null; renderDict(key); return; }
+        // Tapping the name opens the rename field in place.
+        if (e.target.closest('.dict-name')){ dictEdit[key] = id; renderDict(key); }
+      });
+      list.addEventListener('keydown', (e) => {
+        if (!e.target.classList.contains('dict-rename')) return;
+        const host = e.target.closest('[data-id]');
+        if (e.key === 'Enter'){ e.preventDefault(); renameDictEntry(key, host.dataset.id); }
+        else if (e.key === 'Escape'){ e.preventDefault(); dictEdit[key] = null; renderDict(key); }
       });
     });
 
@@ -2203,26 +2399,44 @@
                           '#0891b2','#d97706','#db2777','#4f46e5','#65a30d','#0ea5e9'];
     // Neutral chart chrome for a light background.
     const CHART_TEXT = '#3f3850', CHART_MUTED = '#6b6478', CHART_GRID = 'rgba(27,20,37,.09)';
-    const CUR_SYMBOL = { USD:'$', EUR:'€', UAH:'₴', GBP:'£', PLN:'zł' };
-    // Fallback cross-rates (UAH per 1 unit), mirroring the backend CURRENCY_RATES.
-    // The dashboard normally uses the backend's per-transaction total_uah/usd/eur
-    // (each converted with the historical rate for that tx's date); these flat rates
-    // are only used when a tx's date has no stored rate and the field comes back null.
-    const CUR_RATES_UAH = { USD: 44.9125, EUR: 51.4563, UAH: 1 };
+    /* ---------------- Currencies ----------------
+       The app books in USD, EUR and USDT. UAH is no longer offered, but it stays in the
+       tables below so transactions recorded before the switch still render and still
+       convert instead of dropping out of the totals. */
+    const CURRENCIES = ['USD', 'EUR', 'USDT'];
+    const CUR_SYMBOL = { USD:'$', EUR:'€', USDT:'₮', UAH:'₴', GBP:'£', PLN:'zł' };
+    // Fallback cross-rates (UAH per 1 unit) — UAH stays the pivot because that's the unit the
+    // backend's stored rates are quoted in. USDT is pegged 1:1 to the dollar.
+    // The dashboard normally uses the backend's per-transaction total_uah/usd/eur (each
+    // converted with the historical rate for that tx's date); these flat rates are only used
+    // when a tx's date has no stored rate and the field comes back null.
+    const CUR_RATES_UAH = { USD: 44.9125, USDT: 44.9125, EUR: 51.4563, UAH: 1 };
+    // Which pre-converted field on a transaction holds its value in a given currency. USDT
+    // rides on the USD figure (1:1), so the backend needs no separate rate for it.
+    const CUR_FIELD = { USD:'total_usd', USDT:'total_usd', EUR:'total_eur', UAH:'total_uah' };
     function convertAmount(total, from, to){
       const n = Number(total) || 0;
       const r = CUR_RATES_UAH[from], q = CUR_RATES_UAH[to];
       return (r && q) ? n * r / q : n; // unknown currency → leave as-is
     }
+    // Absolute value of a transaction in `cur`, preferring the backend's historical-rate
+    // figure and falling back to a flat conversion when that date has no stored rate.
+    // Single source of truth for every currency total in the app (sums, dashboard, balances).
+    function txAbsIn(tx, cur){
+      const field = CUR_FIELD[cur];
+      let v = field ? tx[field] : null;
+      if (v == null) v = convertAmount(tx.total, tx.currency || cur, cur);
+      return Math.abs(Number(v) || 0);
+    }
     const dashState = { currency:null, from:'', to:'', cats:null }; // from/to = '' (open); cats:null = all
     let dashCharts = {};
 
     // Money in the selected dashboard currency. `full=true` → exact European format
-    // ("10.000,00 ₴"), used by tooltips where there's room. `full` omitted/false → compact
-    // K/M abbreviation ("209,8K ₴"), used by KPI cards and P&L table cells so values fit on
+    // ("10.000,00 $"), used by tooltips where there's room. `full` omitted/false → compact
+    // K/M abbreviation ("209,8K $"), used by KPI cards and P&L table cells so values fit on
     // one line. Chart axis ticks use dashTick.
     function dashMoney(v, full){
-      const cur = dashState.currency || 'UAH';
+      const cur = dashState.currency || 'USD';
       const sym = CUR_SYMBOL[cur] || cur || '';
       const suf = sym ? ' ' + sym : '';
       const sign = v < 0 ? '-' : '';
@@ -2234,7 +2448,7 @@
     }
     // Money for chart axis ticks — full number, no K/M abbreviation.
     function dashTick(v){
-      const cur = dashState.currency || 'UAH';
+      const cur = dashState.currency || 'USD';
       const sym = CUR_SYMBOL[cur] || cur || '';
       const sign = v < 0 ? '-' : '';
       return sign + euNum(Math.abs(v), 0) + (sym ? ' ' + sym : '');
@@ -2346,9 +2560,10 @@
     function cpName(tx){ return Lycee.pickName(tx.counterparty) || t('dash.nocp'); }
 
     // Currency filter options. Selecting one converts EVERY transaction into that
-    // currency (it no longer filters the rows). UAH is first → the default view.
+    // currency (it no longer filters the rows). USD is first → the default view. A currency
+    // only present in older rows (e.g. UAH) is appended so that data stays readable.
     function dashCurrencies(){
-      const list = ['UAH', 'USD', 'EUR'];
+      const list = CURRENCIES.slice();
       TX.forEach(tx => { const c = tx.currency; if (c && list.indexOf(c) === -1) list.push(c); });
       return list;
     }
@@ -2358,16 +2573,9 @@
     function dashCurRows(){ return scopedTX().slice(); }
     // Amount used for aggregation, in the selected dashboard currency. The backend
     // pre-computes total_uah / total_usd / total_eur per transaction (using the
-    // historical rate for that tx's date), so we just pick the matching field. If
-    // that date has no stored rate the field is null → fall back to a flat client
-    // conversion so the transaction still contributes instead of vanishing.
-    function txAmount(tx){
-      const target = dashState.currency || 'UAH';
-      const field = target === 'USD' ? 'total_usd' : (target === 'EUR' ? 'total_eur' : 'total_uah');
-      let v = tx[field];
-      if (v == null) v = convertAmount(tx.total, tx.currency || target, target);
-      return Math.abs(Number(v) || 0);
-    }
+    // historical rate for that tx's date) — see txAbsIn for the field mapping and the
+    // fallback used when that date has no stored rate.
+    function txAmount(tx){ return txAbsIn(tx, dashState.currency || 'USD'); }
     function dashRows(){
       let rows = dashCurRows();
       // Date range filter (string compare works: both sides are YYYY-MM-DD). Either end may be open.

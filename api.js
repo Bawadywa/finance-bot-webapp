@@ -232,6 +232,25 @@
     return req('/provider', { method: 'DELETE', body: JSON.stringify({ id: Number(id) }) });
   }
 
+  /* -------- renaming (Settings › inline edit) --------
+     PUT <resource> with { id, name }, mirroring the DELETE contract above: the owner comes
+     from the initData header and a row that isn't the caller's should 404. The response is
+     the updated record. Until these routes exist the UI surfaces the error and rolls back. */
+  function updateCounterparty(id, name) {
+    return req('/counterparty', { method: 'PUT', body: JSON.stringify({ id: Number(id), name: name }) });
+  }
+  function updateProvider(id, name) {
+    return req('/provider', { method: 'PUT', body: JSON.stringify({ id: Number(id), name: name }) });
+  }
+  // AccountUpdate replaces the whole record (name + balance + currency are all required),
+  // so callers pass every field, not just the one they changed.
+  function updateAccount(id, fields) {
+    return req('/account', {
+      method: 'PUT',
+      body: JSON.stringify(Object.assign({ id: Number(id) }, fields))
+    });
+  }
+
   /* -------- accounts --------
      Same owner-from-initData contract as the dictionaries above, plus an opening
      balance. Deleting an account leaves its transactions in place with account_id
@@ -241,8 +260,14 @@
     setCachedAccounts(list || []);
     return list || [];
   }
-  function createAccount(name, balance) {
-    return req('/account', { method: 'POST', body: JSON.stringify({ name: name, balance: Number(balance) || 0 }) });
+  // `currency` is the unit the account (and its opening balance) is denominated in. Pydantic
+  // ignores fields the schema doesn't declare, so sending it is safe before the backend
+  // stores it — it just won't come back from GET /accounts until the column exists.
+  function createAccount(name, balance, currency) {
+    return req('/account', {
+      method: 'POST',
+      body: JSON.stringify({ name: name, balance: Number(balance) || 0, currency: currency })
+    });
   }
   function deleteAccount(id) {
     return req('/account', { method: 'DELETE', body: JSON.stringify({ id: Number(id) }) });
@@ -313,11 +338,14 @@
     getTransactionTypes: getTransactionTypes,
     createCounterparty: createCounterparty,
     deleteCounterparty: deleteCounterparty,
+    updateCounterparty: updateCounterparty,
     createProvider: createProvider,
     deleteProvider: deleteProvider,
+    updateProvider: updateProvider,
     getAccounts: getAccounts,
     createAccount: createAccount,
     deleteAccount: deleteAccount,
+    updateAccount: updateAccount,
     cachedAccounts: getCachedAccounts,     // last known list (or null) — for instant render
     setCachedAccounts: setCachedAccounts,  // keep cache in sync after create/delete
     getActiveAccount: getActiveAccount,    // '' = all accounts
