@@ -134,7 +134,19 @@
   function setCachedTx(list) {
     try { localStorage.setItem(TX_KEY, JSON.stringify(Array.isArray(list) ? list : [])); } catch (e) {}
   }
-  function cachedCount() { var c = getCachedTx(); return c ? c.length : null; }
+  // Count as the UI shows it: scoped to the active account when one is selected. The badge
+  // is painted from here on DOM-ready, so it must apply the same scope the views do —
+  // otherwise it would flash (and then overwrite) an all-accounts number.
+  function cachedCount() {
+    var c = getCachedTx();
+    if (!c) return null;
+    var acc = getActiveAccount();
+    if (!acc) return c.length;
+    return c.filter(function (tx) {
+      var id = (tx.account && tx.account.id != null) ? tx.account.id : tx.account_id;
+      return String(id) === String(acc);
+    }).length;
+  }
 
   // Paint the nav count badge from cache the moment the DOM is ready (all tabs).
   function paintBadgeFromCache() {
@@ -220,6 +232,39 @@
     return req('/provider', { method: 'DELETE', body: JSON.stringify({ id: Number(id) }) });
   }
 
+  /* -------- accounts --------
+     Same owner-from-initData contract as the dictionaries above, plus an opening
+     balance. Deleting an account leaves its transactions in place with account_id
+     cleared (the FK is ON DELETE SET NULL). */
+  async function getAccounts() {
+    var list = await req('/accounts' + qp());
+    setCachedAccounts(list || []);
+    return list || [];
+  }
+  function createAccount(name, balance) {
+    return req('/account', { method: 'POST', body: JSON.stringify({ name: name, balance: Number(balance) || 0 }) });
+  }
+  function deleteAccount(id) {
+    return req('/account', { method: 'DELETE', body: JSON.stringify({ id: Number(id) }) });
+  }
+
+  /* -------- accounts: cache + the active one --------
+     The account picker sits in the top bar, so it must paint the right name on the
+     FIRST frame — hence the same cache-then-reconcile trick the transactions use.
+     The active account is the app-wide scope ('' = all accounts) and is remembered
+     per user until they pick another one. */
+  var ACC_KEY = 'lycee_accs_' + (userId || 'anon');
+  var ACTIVE_ACC_KEY = 'lycee_acc_active_' + (userId || 'anon');
+  function getCachedAccounts() {
+    try { var v = JSON.parse(localStorage.getItem(ACC_KEY)); return Array.isArray(v) ? v : null; }
+    catch (e) { return null; }
+  }
+  function setCachedAccounts(list) {
+    try { localStorage.setItem(ACC_KEY, JSON.stringify(Array.isArray(list) ? list : [])); } catch (e) {}
+  }
+  function getActiveAccount() { return lsGet(ACTIVE_ACC_KEY) || ''; }
+  function setActiveAccount(id) { lsSet(ACTIVE_ACC_KEY, id == null ? '' : String(id)); }
+
   /* -------- transactions -------- */
   // Every successful fetch refreshes the shared cache so other tabs render instantly.
   async function getTransactions() {
@@ -270,6 +315,13 @@
     deleteCounterparty: deleteCounterparty,
     createProvider: createProvider,
     deleteProvider: deleteProvider,
+    getAccounts: getAccounts,
+    createAccount: createAccount,
+    deleteAccount: deleteAccount,
+    cachedAccounts: getCachedAccounts,     // last known list (or null) — for instant render
+    setCachedAccounts: setCachedAccounts,  // keep cache in sync after create/delete
+    getActiveAccount: getActiveAccount,    // '' = all accounts
+    setActiveAccount: setActiveAccount,
     getTransactions: getTransactions,
     cachedTransactions: getCachedTx,   // last known list (or null) — for instant render
     cachedCount: cachedCount,          // last known count (or null)

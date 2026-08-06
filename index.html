@@ -6,10 +6,10 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Lycee</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./config.js?v=25"></script>
-  <script src="./api.js?v=25"></script>
-  <script src="./chart.umd.min.js?v=25"></script>
-  <script src="./ui.js?v=25"></script>
+  <script src="./config.js?v=26"></script>
+  <script src="./api.js?v=26"></script>
+  <script src="./chart.umd.min.js?v=26"></script>
+  <script src="./ui.js?v=26"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -84,12 +84,55 @@
 
     /* ---------- Top bar ---------- */
     .topbar{ flex:none; display:grid; grid-template-columns:1fr auto; align-items:center; gap:0.625rem; margin-bottom:0.875rem; }
-    .brand{
-      justify-self:start;
-      font-family:'Manrope'; font-weight:800; font-size:1.375rem; line-height:1;
+    .actions{ justify-self:end; display:flex; gap:0.5rem; }
+
+    /* ---------- Account switcher (top-left, where the wordmark used to be) ----------
+       The app-wide scope selector: the chosen account filters the Transactions list and
+       the Dashboard, and pre-selects itself on the New-transaction form. */
+    .acc-switch{ justify-self:start; position:relative; min-width:0; }
+    .acc-trigger{
+      display:inline-flex; align-items:center; gap:0.4375rem; max-width:min(58vw,15rem);
+      margin:0; padding:0.5rem 0.75rem;
+      background:var(--card_bg); border:0.0625rem solid var(--border); border-radius:62.4375rem;
+      color:var(--text); cursor:pointer;
+      font-family:'Manrope',system-ui,Arial,sans-serif; font-weight:800; font-size:0.9375rem; line-height:1;
+      box-shadow:0 0.0625rem 0.125rem rgba(27,20,37,.05);
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .acc-trigger:hover{ border-color:var(--orange); }
+    .acc-switch.open .acc-trigger{ border-color:var(--orange); box-shadow:0 0 0 0.25rem var(--field_focus); }
+    .acc-trigger:active{ transform:translateY(0.0625rem); }
+    .acc-ico{ flex:none; width:1.125rem; height:1.125rem; color:var(--purple-dk); }
+    .acc-name{
+      min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
       background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
     }
-    .actions{ justify-self:end; display:flex; gap:0.5rem; }
+    .acc-caret{ flex:none; width:1rem; height:1rem; color:var(--hint); transition:transform .2s ease; }
+    .acc-switch.open .acc-caret{ transform:rotate(180deg); color:var(--orange); }
+    .acc-menu{
+      position:absolute; z-index:140; top:calc(100% + 0.4375rem); left:0;
+      min-width:14rem; max-width:min(85vw,20rem); padding:0.375rem;
+      background:var(--secondary_bg); border:0.0625rem solid var(--border); border-radius:0.875rem;
+      box-shadow:0 1.125rem 3.125rem rgba(27,20,37,.18), 0 0.25rem 0.75rem rgba(27,20,37,.08);
+      max-height:min(70vh,24rem); overflow-y:auto; -webkit-overflow-scrolling:touch;
+    }
+    .acc-opt{
+      display:flex; align-items:center; gap:0.5rem; padding:0.5625rem 0.625rem;
+      border-radius:0.5625rem; cursor:pointer; transition:background-color .12s ease;
+    }
+    .acc-opt:hover{ background:var(--hover); }
+    .acc-opt.selected{ background:linear-gradient(135deg,rgba(249,115,22,.16),rgba(168,85,247,.16)); }
+    .acc-opt-txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      font-size:0.9375rem; font-weight:600; }
+    .acc-opt-bal{ flex:none; font-size:0.8125rem; font-weight:700; color:var(--hint); font-variant-numeric:tabular-nums; }
+    .acc-opt.selected .acc-opt-bal{ color:var(--text); }
+    .acc-opt-bal.neg{ color:var(--neg); }
+    .acc-check{ width:1rem; height:1rem; flex:none; color:var(--orange); opacity:0; }
+    .acc-opt.selected .acc-check{ opacity:1; }
+    .acc-sep{ height:0.0625rem; background:var(--border); margin:0.3125rem 0.25rem; }
+    .acc-manage .acc-opt-txt{ color:var(--purple-dk); font-weight:700; font-size:0.875rem; }
+    .acc-manage svg{ flex:none; width:1rem; height:1rem; color:var(--purple-dk); }
+    .acc-empty{ padding:0.625rem; color:var(--hint); font-size:0.8125rem; text-align:center; }
     /* In Telegram fullscreen the native close/menu controls sit in the top-right corner
        and overlap our buttons there — so centre them instead while fullscreen is on. */
     body.is-fullscreen .topbar{ grid-template-columns:1fr auto 1fr; }
@@ -241,6 +284,8 @@
     .btn-gradient:disabled, .btn-ghost:disabled{ opacity:.6; cursor:default; }
     .btn-ghost svg{ width:1.125rem; height:1.125rem; }
     .hint{ color:var(--hint); font-size:0.75rem; margin-top:0.875rem; text-align:center; }
+    /* Inline hint that belongs to the field right above it (not a footer note). */
+    .hint.field-hint{ margin:0.375rem 0 0; text-align:left; }
     /* Non-blocking inline warning (e.g. payable settled exceeds accrued). */
     .form-warn{
       margin:0.75rem 0 0; padding:0.625rem 0.75rem; border-radius:0.625rem;
@@ -328,6 +373,8 @@
       border:0.0625rem solid var(--border); font-size:0.75rem; font-weight:700; white-space:nowrap; }
     /* Provider chip is tinted purple so it reads apart from type/category at a glance. */
     .txc-chip-pv{ border-color:rgba(168,85,247,.35); background:rgba(168,85,247,.08); color:var(--purple-dk); }
+    /* Account chip — blue, matching the account dot in Settings. Shown only in "all accounts" view. */
+    .txc-chip-acc{ border-color:rgba(37,99,235,.35); background:rgba(37,99,235,.08); color:var(--recv); }
     .txc-comment{ font-size:0.8125rem; color:var(--hint); margin-top:0.5625rem; word-break:break-word; }
     /* Mobile: show cards, hide the table */
     @media (max-width:680px){
@@ -526,6 +573,11 @@
     .dict-dot{ flex:none; width:0.5rem; height:0.5rem; border-radius:50%; }
     .dict-cp .dict-dot{ background:var(--orange); }
     .dict-pv .dict-dot{ background:var(--purple); }
+    .dict-acc .dict-dot{ background:var(--recv); }
+    /* Accounts carry an opening balance, so their add row has a second, narrow field. */
+    .dict-add-bal{ flex:none; width:6.5rem; }
+    .dict-bal{ flex:none; font-size:0.8125rem; font-weight:700; color:var(--hint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .dict-bal.neg{ color:var(--neg); }
     .dict-name{ flex:1; min-width:0; font-size:0.9375rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .dict-del{
       flex:none; width:auto; margin:0; padding:0.375rem; background:transparent; border:none;
@@ -622,11 +674,21 @@
 </head>
 <body data-scheme="light">
   <header class="topbar">
-    <div class="brand">Lycee</div>
+    <!-- Account switcher: the app-wide scope (an account, or all of them) -->
+    <div class="acc-switch" id="accSwitch">
+      <button class="acc-trigger" id="accTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+        <svg class="acc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/><path d="M17 15h2"/></svg>
+        <!-- Label is written by renderAccSwitch() (no data-i18n: applyI18n would overwrite
+             the selected account's name with the static "all accounts" text). -->
+        <span class="acc-name" id="accName">Усі рахунки</span>
+        <svg class="acc-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="acc-menu" id="accMenu" role="listbox" hidden></div>
+    </div>
     <div class="actions">
-      <button class="icon-btn accent" id="settingsBtn" type="button" title="Довідники">
+      <button class="icon-btn accent" id="settingsBtn" type="button" title="Налаштування">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span class="lbl" data-i18n="btn.settings">Довідники</span>
+        <span class="lbl" data-i18n="btn.settings">Налаштування</span>
       </button>
       <button class="icon-btn desktop-only" id="fsBtn" type="button" title="На весь екран">
         <svg id="fsExpand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -658,6 +720,12 @@
             <span class="date-placeholder" data-i18n="ph.date">📅 Оберіть дату</span>
             <span class="date-value"></span>
           </div>
+
+          <!-- Which account the money moves on. The top-bar picker's "all accounts" is a
+               viewing mode only — a transaction always belongs to one specific account. -->
+          <label class="req" data-i18n="field.account">Рахунок</label>
+          <select id="account"><option value="" disabled selected data-i18n="ph.select">Оберіть…</option></select>
+          <p class="hint field-hint" id="accountHint" hidden data-i18n="hint.noaccounts">Створіть рахунок у налаштуваннях, щоб прив'язати транзакцію.</p>
 
           <div class="row2">
             <div>
@@ -775,6 +843,7 @@
                     <th data-i18n="th.category">Категорія</th>
                     <th data-i18n="th.counterparty">Контрагент</th>
                     <th data-i18n="th.provider">Постачальник</th>
+                    <th data-i18n="th.account">Рахунок</th>
                     <th data-i18n="th.comment">Коментар</th>
                     <th class="act"></th>
                   </tr>
@@ -900,8 +969,27 @@
     <section class="view" id="view-settings" hidden>
       <div class="col">
         <div class="card dict-card">
-          <h1 class="title gradient" data-i18n="set.title">Довідники</h1>
+          <h1 class="title gradient" data-i18n="set.title">Налаштування</h1>
           <p class="subtitle" data-i18n="set.subtitle">Керуйте списками, з яких заповнюється форма.</p>
+        </div>
+
+        <!-- Accounts (first: they scope the whole app from the top-bar picker) -->
+        <div class="card dict-card dict-acc">
+          <div class="dict-head">
+            <h3 data-i18n="set.acc.title">Рахунки</h3>
+            <span class="dict-count" id="accCount">0</span>
+          </div>
+          <div class="dict-add">
+            <input id="accNew" type="text" maxlength="15" autocomplete="off"
+                   data-i18n-ph="set.ph.acc" placeholder="Новий рахунок" />
+            <input id="accNewBal" class="dict-add-bal" type="number" inputmode="decimal" step="0.01"
+                   autocomplete="off" data-i18n-ph="set.ph.accbal" placeholder="0.00" />
+            <button class="dict-add-btn" id="accAddBtn" type="button" data-i18n-title="set.add" title="Додати">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+          <p class="hint field-hint" data-i18n="set.acc.hint">Баланс = початковий залишок (₴) плюс рух коштів на рахунку.</p>
+          <ul class="dict-list" id="accList"></ul>
         </div>
 
         <!-- Counterparties -->
@@ -966,7 +1054,7 @@
         'btn.save':'Зберегти зміни', 'btn.cancel':'Скасувати', 'toast.updated':'Транзакцію оновлено',
         'field.date':'Дата', 'field.total':'Сума', 'field.currency':'Валюта', 'field.type':'Тип',
         'field.category':'Категорія', 'field.counterparty':'Контрагент', 'field.comment':'Коментар',
-        'field.provider':'Постачальник',
+        'field.provider':'Постачальник', 'field.account':'Рахунок',
         'ph.date':'📅 Оберіть дату', 'ph.comment':'За що?', 'ph.select':'Оберіть…',
         'btn.create':'Створити транзакцію',
         'toast.created':'Транзакцію додано',
@@ -974,14 +1062,18 @@
         'alert.missing':'Заповніть, будь ласка:',
         'warn.payable':'Погашена кредиторка перевищує нараховану для цього контрагента на',
         'hint.config':'⚠ Вкажіть API_BASE у config.js',
+        'hint.noaccounts':'Створіть рахунок у налаштуваннях, щоб прив\'язати транзакцію.',
         'table.title':'Транзакції', 'table.subtitle':'Усе, що ви додали.',
         'th.date':'Дата', 'th.total':'Сума', 'th.currency':'Валюта', 'th.type':'Тип',
         'th.category':'Категорія', 'th.counterparty':'Контрагент', 'th.comment':'Коментар',
-        'th.provider':'Постачальник',
+        'th.provider':'Постачальник', 'th.account':'Рахунок',
         'empty.title':'Поки немає транзакцій', 'empty.text':'Створіть першу на вкладці «Додати».',
+        'empty.acc.title':'На цьому рахунку немає транзакцій',
+        'empty.acc.text':'Додайте транзакцію або оберіть інший рахунок угорі.',
         'cfg.title':'Бекенд не налаштовано', 'cfg.text':'Вкажіть API_BASE у config.js, щоб завантажити транзакції.',
         'err.title':'Не вдалося завантажити транзакції', 'err.text':'Перевірте, що бекенд запущено та доступний.',
         'btn.clear':'Очистити все', 'confirm.clear':'Видалити всі транзакції?',
+        'confirm.clear.all':'Видалити ВСІ транзакції — з усіх рахунків, а не лише з обраного?',
         'toast.cleared':'Очищено',
         'tab.dash':'Дашборд',
         'dash.f.currency':'Валюта', 'dash.f.from':'Від', 'dash.f.to':'До', 'dash.f.cats':'Категорії',
@@ -1016,8 +1108,8 @@
         'dash.sal.who':'Контрагент', 'dash.sal.none':'Немає зарплатних транзакцій за період.',
         'theme':'Тема',
         // Settings › dictionaries
-        'btn.settings':'Довідники',
-        'set.title':'Довідники', 'set.subtitle':'Керуйте списками, з яких заповнюється форма.',
+        'btn.settings':'Налаштування',
+        'set.title':'Налаштування', 'set.subtitle':'Керуйте списками, з яких заповнюється форма.',
         'set.cp.title':'Контрагенти', 'set.pv.title':'Постачальники',
         'set.ph.cp':'Новий контрагент', 'set.ph.pv':'Новий постачальник',
         'set.add':'Додати', 'set.back':'Назад',
@@ -1027,7 +1119,14 @@
         'set.cp.deleted':'Контрагента видалено', 'set.pv.deleted':'Постачальника видалено',
         'set.confirm.cp':'Видалити контрагента «%s»?', 'set.confirm.pv':'Видалити постачальника «%s»?',
         'set.dup':'Такий запис уже існує',
-        'set.inuse':'Не вдалося видалити — можливо, запис уже використовується'
+        'set.inuse':'Не вдалося видалити — можливо, запис уже використовується',
+        // Accounts
+        'acc.all':'Усі рахунки', 'acc.empty':'Ще немає рахунків', 'acc.manage':'Керувати рахунками',
+        'set.acc.title':'Рахунки', 'set.ph.acc':'Новий рахунок', 'set.ph.accbal':'0.00',
+        'set.acc.hint':'Баланс = початковий залишок (₴) плюс рух коштів на рахунку.',
+        'set.acc.empty':'Поки немає рахунків. Додайте перший вище.',
+        'set.acc.added':'Рахунок додано', 'set.acc.deleted':'Рахунок видалено',
+        'set.confirm.acc':'Видалити рахунок «%s»? Його транзакції залишаться без рахунку.'
       };
     const t = (k) => dict[k] || k;
     const locale = () => 'uk-UA';
@@ -1147,7 +1246,111 @@
     document.getElementById('settingsBtn').onclick = () => { showView('settings'); views.settings.scrollTop = 0; };
     document.getElementById('settingsBackBtn').onclick = () => showView(lastMainView);
 
-    /* ---------------- Dropdowns (Type / Category / Counterparty / Provider) ---------------- */
+    /* ---------------- Accounts: top-bar picker = app-wide scope ----------------
+       `activeAcc` is the whole app's scope: an account id filters the Transactions list
+       and the Dashboard to that account; '' means "all accounts" (a viewing mode — the
+       New-transaction form still demands one specific account); null means the user has
+       never chosen, so the first account is adopted once the list loads.
+       The choice is persisted per user, so it survives reloads until they pick another. */
+    let ACCS = Lycee.cachedAccounts() || [];
+    let activeAcc = Lycee.getActiveAccount();   // null = never chosen · '' = all · id = one
+    const accSwitch  = document.getElementById('accSwitch');
+    const accTrigger = document.getElementById('accTrigger');
+    const accMenu    = document.getElementById('accMenu');
+    const accNameEl  = document.getElementById('accName');
+    const accSel     = document.getElementById('account');
+
+    // Account of a transaction — the nested object when the API sent it, flat id otherwise.
+    function txAccId(tx){ return (tx.account && tx.account.id != null) ? tx.account.id : tx.account_id; }
+    function accById(id){ return ACCS.filter(a => String(a.id) === String(id))[0] || null; }
+    // The transactions in scope. Every view derives its rows from here, so switching
+    // accounts re-scopes the whole app at once.
+    function scopedTX(){
+      if (!activeAcc) return TX;
+      return TX.filter(tx => String(txAccId(tx)) === String(activeAcc));
+    }
+    function setStoredAcc(v){ activeAcc = v; Lycee.setActiveAccount(v); }
+
+    // Cash actually moved on an account, in ₴. Accounts carry no currency of their own, so
+    // the opening balance is read as ₴ and each transaction contributes its historical-rate
+    // UAH value. Accrued-only rows moved no cash yet → txCash() returns '' and they're skipped.
+    function accCashUah(accId){
+      return TX.reduce((s, tx) => {
+        if (String(txAccId(tx)) !== String(accId)) return s;
+        const dir = txCash(tx);
+        if (!dir) return s;
+        const v = tx.total_uah != null ? tx.total_uah : convertAmount(tx.total, tx.currency || 'UAH', 'UAH');
+        return s + (dir === 'in' ? 1 : -1) * Math.abs(Number(v) || 0);
+      }, 0);
+    }
+    function accBalance(acc){ return (Number(acc.balance) || 0) + accCashUah(acc.id); }
+    function accBalanceStr(acc){
+      const v = accBalance(acc);
+      return (v < 0 ? '−' : '') + fmtNum(Math.abs(v)) + ' ' + CUR_SYMBOL.UAH;
+    }
+
+    const ACC_CHECK = '<svg class="acc-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    function accRow(val, name, bal, neg){
+      const on = String(val) === String(activeAcc || '') ? ' selected' : '';
+      return `<div class="acc-opt${on}" data-acc="${esc(val)}" role="option">
+          <span class="acc-opt-txt">${esc(name)}</span>
+          ${bal ? `<span class="acc-opt-bal${neg ? ' neg' : ''}">${esc(bal)}</span>` : ''}
+          ${ACC_CHECK}
+        </div>`;
+    }
+    function renderAccSwitch(){
+      const active = activeAcc ? accById(activeAcc) : null;
+      accNameEl.textContent = active ? Lycee.pickName(active) : t('acc.all');
+      const rows = ACCS.slice().sort(byLocaleName)
+        .map(a => accRow(String(a.id), Lycee.pickName(a), accBalanceStr(a), accBalance(a) < 0));
+      accMenu.innerHTML =
+        accRow('', t('acc.all'), '', false) +
+        (rows.length ? rows.join('') : `<div class="acc-empty">${esc(t('acc.empty'))}</div>`) +
+        `<div class="acc-sep"></div>
+         <div class="acc-opt acc-manage" data-manage="1">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+           <span class="acc-opt-txt">${esc(t('acc.manage'))}</span>
+         </div>`;
+    }
+    function accMenuOpen(open){
+      accMenu.hidden = !open;
+      accSwitch.classList.toggle('open', open);
+      accTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    accTrigger.onclick = () => {
+      const willOpen = accMenu.hidden;
+      if (willOpen) renderAccSwitch();   // balances change with every transaction
+      accMenuOpen(willOpen);
+    };
+    document.addEventListener('click', (e) => {
+      if (!accMenu.hidden && !accSwitch.contains(e.target)) accMenuOpen(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') accMenuOpen(false); });
+    accMenu.addEventListener('click', (e) => {
+      accMenuOpen(false);
+      if (e.target.closest('[data-manage]')){ showView('settings'); views.settings.scrollTop = 0; return; }
+      const opt = e.target.closest('[data-acc]');
+      if (opt) selectAccount(opt.dataset.acc);
+    });
+    function selectAccount(id){
+      const next = id == null ? '' : String(id);
+      if (next === String(activeAcc || '')) return;
+      setStoredAcc(next);
+      renderAccSwitch();
+      syncFormAccount();   // the form follows the picker (unless a row is being edited)
+      renderTable();       // re-scopes list + badge, and repaints the dashboard if open
+      haptic('success');
+    }
+    // The form's account follows the picker. "All accounts" is a viewing mode, so there the
+    // field starts on the placeholder and the user must pick one; mid-edit the row keeps its own.
+    function syncFormAccount(){
+      if (editingId != null) return;
+      if (activeAcc && accById(activeAcc)) accSel.value = String(activeAcc);
+      else accSel.selectedIndex = 0;
+      if (window.LyceeUI) LyceeUI.refreshAll();
+    }
+
+    /* ---------------- Dropdowns (Type / Category / Counterparty / Provider / Account) ---------------- */
     const typeSel = document.getElementById('type');
     const catSel  = document.getElementById('category');
     const cpSel   = document.getElementById('counterparty');
@@ -1169,6 +1372,12 @@
       if (!typeSel) return;
       fillSelect(typeSel, TYPES); fillSelect(catSel, CATS);
       fillSelect(cpSel, CPS); fillSelect(pvSel, PVS);
+      // Accounts: keep whatever is selected if it still exists, otherwise fall back to
+      // the picker's account. The hint tells a user with no accounts yet where to make one.
+      const keepAcc = accSel.value;
+      fillSelect(accSel, ACCS);
+      if (keepAcc && accById(keepAcc)) accSel.value = keepAcc; else syncFormAccount();
+      document.getElementById('accountHint').hidden = ACCS.length > 0;
       if (window.LyceeUI) LyceeUI.refreshAll();  // reflect new options in custom selects
     }
     async function loadOptions(){
@@ -1176,11 +1385,23 @@
       try {
         // Categories are type-scoped, so they're NOT loaded here — they're fetched
         // on demand once a type is chosen (see loadCategoriesForType). Start empty.
-        const [types, cps, pvs] = await Promise.all([
-          Lycee.getTransactionTypes(), Lycee.getCounterparties(), Lycee.getProviders()
+        const [types, cps, pvs, accs] = await Promise.all([
+          Lycee.getTransactionTypes(), Lycee.getCounterparties(), Lycee.getProviders(),
+          Lycee.getAccounts()
         ]);
         TYPES = types || []; CPS = cps || []; PVS = pvs || []; CATS = [];
+        ACCS = accs || [];
+        // Reconcile the remembered scope against the accounts that actually exist now:
+        // never chosen → adopt the first account; a since-deleted one → first account (or
+        // "all" if none are left). An explicit "all accounts" ('') is always respected.
+        if (ACCS.length){
+          if (activeAcc == null || (activeAcc && !accById(activeAcc))) setStoredAcc(String(ACCS[0].id));
+        } else if (activeAcc){
+          setStoredAcc('');
+        }
+        renderAccSwitch();
         refillSelects();
+        renderTable();   // the scope may have changed → re-filter the list + badge
       } catch(e){ console.error(e); showToast(t('toast.error')); }
     }
 
@@ -1235,15 +1456,15 @@
     // Filter state for the Transactions table (empty string = no filter on that field).
     const tableFilter = { type:'', cat:[], cp:[], pv:[], cur:'', from:'', to:'' };
 
-    // Distinct {id,name} reference objects present in TX for a given key.
+    // Distinct {id,name} reference objects present in the scoped rows for a given key.
     function distinctRef(key){
       const m = new Map();
-      TX.forEach(tx => { const o = tx[key]; if (o && o.id != null) m.set(String(o.id), o); });
+      scopedTX().forEach(tx => { const o = tx[key]; if (o && o.id != null) m.set(String(o.id), o); });
       return [...m.values()];
     }
-    // Distinct currency codes present in TX.
+    // Distinct currency codes present in the scoped rows.
     function distinctCurrencies(){
-      const seen = []; TX.forEach(tx => { const c = tx.currency; if (c && seen.indexOf(c) === -1) seen.push(c); });
+      const seen = []; scopedTX().forEach(tx => { const c = tx.currency; if (c && seen.indexOf(c) === -1) seen.push(c); });
       return seen.sort();
     }
     // Populate one filter <select> with an "All" option + the given {value,label} list,
@@ -1281,9 +1502,10 @@
       syncDateField(fFrom); syncDateField(fTo);
       if (window.LyceeUI) LyceeUI.refreshAll();
     }
-    // The TX rows passing the active filters.
+    // The rows of the active account (all of them when the picker is on "all accounts")
+    // that also pass the table's own filters.
     function filterTX(){
-      return TX.filter(tx => {
+      return scopedTX().filter(tx => {
         if (tableFilter.type && String(tx.type && tx.type.id) !== tableFilter.type) return false;
         if (tableFilter.cat.length && !tableFilter.cat.includes(String(tx.category && tx.category.id))) return false;
         if (tableFilter.cp.length && !tableFilter.cp.includes(String(tx.counterparty && tx.counterparty.id))) return false;
@@ -1327,24 +1549,28 @@
         : `<span class="sum-amt muted">—</span>`;
       const label = `${esc(t('tbl.total'))} · ${rows.length}`;
       const inner = `<span class="sum-label">${label}</span><span class="sum-vals">${chips}</span>`;
-      if (foot) foot.innerHTML = `<tr class="sum-row"><td colspan="9"><div class="sum-inner">${inner}</div></td></tr>`;
+      if (foot) foot.innerHTML = `<tr class="sum-row"><td colspan="10"><div class="sum-inner">${inner}</div></td></tr>`;
       if (sumEl) sumEl.innerHTML = inner;
     }
 
     function renderTable(){
-      document.getElementById('countBadge').textContent = TX.length;
+      const scoped = scopedTX();
+      document.getElementById('countBadge').textContent = scoped.length;
       try { dashOnData(); } catch(e){}
       const content = document.getElementById('content');
       const empty = document.getElementById('empty');
       if (!txLoaded) return; // nothing decided yet (no cache) → leave as-is until first fetch
 
-      if (!TX.length){
+      if (!scoped.length){
         content.style.display = 'none';
         empty.style.display = 'block';
         document.getElementById('clearFiltersBtn').hidden = true;
-        document.getElementById('emptyEmoji').textContent = '🧾';
-        document.getElementById('emptyTitle').textContent = t('empty.title');
-        document.getElementById('emptyText').textContent = t('empty.text');
+        // Distinguish "no transactions at all" from "none on THIS account" — otherwise an
+        // account switch looks like the whole ledger vanished.
+        const emptyAcc = !!activeAcc && TX.length > 0;
+        document.getElementById('emptyEmoji').textContent = emptyAcc ? '💳' : '🧾';
+        document.getElementById('emptyTitle').textContent = t(emptyAcc ? 'empty.acc.title' : 'empty.title');
+        document.getElementById('emptyText').textContent = t(emptyAcc ? 'empty.acc.text' : 'empty.text');
         return;
       }
       content.style.display = 'block';
@@ -1362,7 +1588,7 @@
       // Filters matched nothing (but transactions do exist) → inline notice + empty sum.
       if (!rows.length){
         const note = `<div class="tx-noresults">${esc(t('tbl.noresults'))}</div>`;
-        document.getElementById('rows').innerHTML = `<tr><td colspan="9">${note}</td></tr>`;
+        document.getElementById('rows').innerHTML = `<tr><td colspan="10">${note}</td></tr>`;
         document.getElementById('txCards').innerHTML = note;
         renderTxSum(rows);
         return;
@@ -1380,6 +1606,7 @@
           <td>${tx.category ? `<span class="cur-chip">${escapeHtml(Lycee.pickName(tx.category))}</span>` : '—'}</td>
           <td>${escapeHtml(Lycee.pickName(tx.counterparty) || '—')}</td>
           <td>${escapeHtml(Lycee.pickName(tx.provider) || '—')}</td>
+          <td>${tx.account ? `<span class="cur-chip">${escapeHtml(Lycee.pickName(tx.account))}</span>` : '—'}</td>
           <td class="t-comment">${escapeHtml(tx.comment || '—')}</td>
           <td class="act"><div class="row-actions">
             <button class="edit" type="button" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
@@ -1397,7 +1624,10 @@
         const chips = [
           tx.type ? `<span class="txc-chip">${escapeHtml(Lycee.pickName(tx.type))}</span>` : '',
           tx.category ? `<span class="txc-chip">${escapeHtml(Lycee.pickName(tx.category))}</span>` : '',
-          tx.provider ? `<span class="txc-chip txc-chip-pv">${escapeHtml(Lycee.pickName(tx.provider))}</span>` : ''
+          tx.provider ? `<span class="txc-chip txc-chip-pv">${escapeHtml(Lycee.pickName(tx.provider))}</span>` : '',
+          // Only worth a chip when several accounts are in view — with one account selected
+          // the top bar already says which, and the card stays uncluttered.
+          (!activeAcc && tx.account) ? `<span class="txc-chip txc-chip-acc">${escapeHtml(Lycee.pickName(tx.account))}</span>` : ''
         ].join('');
         const comment = tx.comment ? `<div class="txc-comment">${escapeHtml(tx.comment)}</div>` : '';
         return `
@@ -1469,7 +1699,7 @@
         const changed = !txLoaded || JSON.stringify(fresh) !== JSON.stringify(TX);
         TX = fresh; txLoaded = true;
         if (changed) renderTable();
-        else document.getElementById('countBadge').textContent = TX.length;
+        else document.getElementById('countBadge').textContent = scopedTX().length;
       } catch(e){ console.error(e); }
     }
 
@@ -1490,11 +1720,11 @@
         haptic('warning');
         // Targeted O(1) update: drop the matching row + card (both views share the id)
         // instead of re-rendering everything (that caused delete-spam lag).
-        if (!TX.length){
-          renderTable();                 // last one gone → show the empty state
+        if (!scopedTX().length){
+          renderTable();                 // last one in view gone → show the empty state
         } else {
           contentEl.querySelectorAll('[data-id="' + id + '"]').forEach(el => el.remove());
-          document.getElementById('countBadge').textContent = TX.length;
+          document.getElementById('countBadge').textContent = scopedTX().length;
           renderTxSum(filterTX());       // keep the sum row in step with the removal
           try { dashOnData(); } catch(e){} // repaint charts only if the dashboard is open
         }
@@ -1510,7 +1740,9 @@
 
     document.getElementById('clearBtn').onclick = () => {
       if (!TX.length) return;
-      confirmThen(t('confirm.clear'), async () => {
+      // The backend clears the whole ledger, not just the account in view — say so plainly
+      // when a single account is selected, so nobody wipes the other accounts by accident.
+      confirmThen(t(activeAcc ? 'confirm.clear.all' : 'confirm.clear'), async () => {
         try {
           await Lycee.clearTransactions();
           TX = []; Lycee.setCachedTransactions(TX);
@@ -1558,6 +1790,7 @@
       typeSel.selectedIndex = 0; cpSel.selectedIndex = 0; pvSel.selectedIndex = 0;
       // No type selected → no categories. Empty the list, not just the selection.
       CATS = []; fillSelect(catSel, CATS);
+      syncFormAccount();   // back to the account the picker is on
       if (window.LyceeUI) LyceeUI.refreshAll();
       validatePayable();  // clears the payable warning (no type/cp/total selected)
     }
@@ -1592,6 +1825,11 @@
       // rather than leaving whatever the previous edit selected.
       const pvId = refId(tx.provider, tx.provider_id);
       if (pvId === '' || pvId == null) pvSel.selectedIndex = 0; else pvSel.value = String(pvId);
+      // The row keeps its own account. An older row that has none lands on the placeholder,
+      // so saving it now requires choosing one (same rule as a new transaction).
+      const accId = refId(tx.account, tx.account_id);
+      if (accId === '' || accId == null || !accById(accId)) accSel.selectedIndex = 0;
+      else accSel.value = String(accId);
       document.getElementById('comment').value = tx.comment || '';
       if (window.LyceeUI) LyceeUI.refreshAll();  // reflect pre-filled values in custom widgets
       setFormMode(true);
@@ -1623,7 +1861,8 @@
       // currently being edited, whose new values replace the old).
       const toUah = tx => Math.abs(Number(tx.total_uah != null ? tx.total_uah : convertAmount(tx.total, tx.currency || 'UAH', 'UAH')) || 0);
       let accrued = 0, settled = 0;
-      TX.forEach(tx => {
+      // Scoped like every other view: what's owed is compared within the account in view.
+      scopedTX().forEach(tx => {
         if (editingId != null && String(tx.id) === String(editingId)) return;
         const cp = tx.counterparty; if (!cp || String(cp.id) !== String(cp_id)) return;
         const ts = typeStr(tx); if (!/кредитор|payable/.test(ts)) return;
@@ -1651,6 +1890,7 @@
       const category_id = parseInt(catSel.value, 10);
       const counterparty_id = parseInt(cpSel.value, 10);
       const provider_id = parseInt(pvSel.value, 10) || null;   // optional
+      const account_id = parseInt(accSel.value, 10) || null;
       const comment = document.getElementById('comment').value.trim();
 
       // Name exactly which required fields are missing, so the popup is specific
@@ -1661,10 +1901,13 @@
       if (!type_id) missing.push(t('field.type'));
       if (!category_id) missing.push(t('field.category'));
       if (!counterparty_id) missing.push(t('field.counterparty'));
+      // Required as soon as the user has any account — a ledger with none yet still works
+      // (account stays null) so accounts can be adopted without blocking existing use.
+      if (ACCS.length && !account_id) missing.push(t('field.account'));
       if (missing.length){ notify(t('alert.missing') + ' ' + missing.join(', ')); return; }
       if (!Lycee.configured){ notify(t('hint.config')); return; }
 
-      const payload = { occured_at: date, total, currency, type_id, category_id, counterparty_id, provider_id, comment };
+      const payload = { occured_at: date, total, currency, type_id, category_id, counterparty_id, provider_id, account_id, comment };
       createBtn.disabled = true;
       try {
         if (editingId != null){
@@ -1727,7 +1970,87 @@
           <button class="dict-del" type="button" data-dict="${esc(key)}" aria-label="${esc(t('btn.clear'))}">${TRASH_SVG}</button>
         </li>`).join('');
     }
-    function renderDicts(){ renderDict('cp'); renderDict('pv'); }
+    function renderDicts(){ renderAccounts(); renderDict('cp'); renderDict('pv'); }
+
+    /* ---------------- Settings › accounts ----------------
+       Same shape as the dictionaries above, but an account also carries an opening balance,
+       so it gets its own add row (name + balance) and shows the live balance per row. */
+    function renderAccounts(){
+      const list = document.getElementById('accList');
+      const items = ACCS.slice().sort(byLocaleName);
+      document.getElementById('accCount').textContent = items.length;
+      if (!items.length){
+        list.innerHTML = `<li class="dict-empty">${esc(t('set.acc.empty'))}</li>`;
+        return;
+      }
+      list.innerHTML = items.map(a => `
+        <li class="dict-item" data-id="${esc(a.id)}">
+          <span class="dict-dot"></span>
+          <span class="dict-name">${esc(Lycee.pickName(a))}</span>
+          <span class="dict-bal${accBalance(a) < 0 ? ' neg' : ''}">${esc(accBalanceStr(a))}</span>
+          <button class="dict-del" type="button" aria-label="${esc(t('btn.clear'))}">${TRASH_SVG}</button>
+        </li>`).join('');
+    }
+
+    async function addAccount(){
+      const nameEl = document.getElementById('accNew'), balEl = document.getElementById('accNewBal');
+      const btn = document.getElementById('accAddBtn');
+      const name = nameEl.value.trim();
+      const balance = parseFloat(balEl.value);
+      if (!name) return;
+      if (!Lycee.configured){ notify(t('hint.config')); return; }
+      if (ACCS.some(a => Lycee.pickName(a).toLowerCase() === name.toLowerCase())){ showToast(t('set.dup')); return; }
+      btn.disabled = true;
+      try {
+        const created = await Lycee.createAccount(name, isNaN(balance) ? 0 : balance);
+        if (created && created.id != null){
+          ACCS = ACCS.concat([created]);
+          Lycee.setCachedAccounts(ACCS);
+          // First account ever → make it the scope straight away, so the form is usable
+          // without a detour through the picker.
+          if (ACCS.length === 1) setStoredAcc(String(created.id));
+        }
+        nameEl.value = ''; balEl.value = '';
+        renderAccounts(); renderAccSwitch();
+        refillSelects();          // immediately pickable on the transaction form
+        renderTable();            // the scope may have just changed
+        haptic('success');
+        showToast(t('set.acc.added'));
+      } catch(e){ console.error(e); haptic('error'); showToast(t('toast.error')); }
+      finally { btn.disabled = false; nameEl.focus(); }
+    }
+
+    function deleteAccountEntry(id, btn){
+      const entry = ACCS.filter(a => String(a.id) === String(id))[0];
+      confirmThen(t('set.confirm.acc').replace('%s', Lycee.pickName(entry) || ''), async () => {
+        btn.disabled = true;
+        try {
+          await Lycee.deleteAccount(id);
+          ACCS = ACCS.filter(a => String(a.id) !== String(id));
+          Lycee.setCachedAccounts(ACCS);
+          // The scope was pointing at it → fall back to the first account left, or "all".
+          if (String(activeAcc) === String(id)) setStoredAcc(ACCS.length ? String(ACCS[0].id) : '');
+          renderAccounts(); renderAccSwitch(); refillSelects();
+          haptic('warning');
+          showToast(t('set.acc.deleted'));
+          // Its transactions survive with account_id cleared (the FK is ON DELETE SET NULL),
+          // so refetch instead of leaving the deleted account on each row.
+          reconcileTable();
+        } catch(e){ console.error(e); btn.disabled = false; haptic('error'); showToast(t('set.inuse')); }
+      });
+    }
+
+    document.getElementById('accAddBtn').onclick = () => addAccount();
+    ['accNew', 'accNewBal'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', (e) => {
+        if (e.key === 'Enter'){ e.preventDefault(); addAccount(); }
+      });
+    });
+    document.getElementById('accList').addEventListener('click', (e) => {
+      const btn = e.target.closest('.dict-del');
+      if (!btn) return;
+      deleteAccountEntry(btn.closest('[data-id]').dataset.id, btn);
+    });
 
     async function addDictEntry(key){
       const d = DICTS[key];
@@ -1945,9 +2268,10 @@
       TX.forEach(tx => { const c = tx.currency; if (c && list.indexOf(c) === -1) list.push(c); });
       return list;
     }
-    // Every transaction is always in scope now — the currency filter changes the
-    // display/aggregation currency, not which rows are shown.
-    function dashCurRows(){ return TX.slice(); }
+    // Every transaction of the selected account is in scope (all accounts when the picker
+    // is on "all") — the currency filter changes the display/aggregation currency, not
+    // which rows are shown.
+    function dashCurRows(){ return scopedTX().slice(); }
     // Amount used for aggregation, in the selected dashboard currency. The backend
     // pre-computes total_uah / total_usd / total_eur per transaction (using the
     // historical rate for that tx's date), so we just pick the matching field. If
@@ -2388,7 +2712,7 @@
       const content = document.getElementById('dashContent');
       const kpis = document.getElementById('dashKpis');
 
-      if (!TX.length || !dashState.currency){
+      if (!scopedTX().length || !dashState.currency){
         destroyCharts();
         content.style.display = 'none'; kpis.style.display = 'none'; empty.style.display = 'block';
         return;
@@ -2463,6 +2787,7 @@
     if (window.LyceeUI) LyceeUI.enhanceAll();  // custom selects/date picker on desktop (no-op on touch)
     applyI18n();
     syncDate();
+    renderAccSwitch();       // paint the picker from the cached accounts (no "all" flash)
     renderTable();           // instant paint from cache (badge + table)
     showView('new');
     (async () => {
