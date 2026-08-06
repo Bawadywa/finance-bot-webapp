@@ -6,10 +6,10 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Lycee</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./config.js?v=29"></script>
-  <script src="./api.js?v=29"></script>
-  <script src="./chart.umd.min.js?v=29"></script>
-  <script src="./ui.js?v=29"></script>
+  <script src="./config.js?v=30"></script>
+  <script src="./api.js?v=30"></script>
+  <script src="./chart.umd.min.js?v=30"></script>
+  <script src="./ui.js?v=30"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -1236,7 +1236,7 @@
         'btn.save':'Зберегти зміни', 'btn.cancel':'Скасувати', 'toast.updated':'Транзакцію оновлено',
         'field.date':'Дата', 'field.total':'Сума', 'field.currency':'Валюта', 'field.type':'Тип',
         'field.category':'Категорія', 'field.counterparty':'Контрагент', 'field.comment':'Коментар',
-        'field.provider':'Постачальник',
+        'field.provider':'Постачальник', 'field.account':'Рахунок',
         'ph.date':'📅 Оберіть дату', 'ph.comment':'За що?', 'ph.select':'Оберіть…',
         'btn.create':'Створити транзакцію',
         'toast.created':'Транзакцію додано',
@@ -1553,6 +1553,8 @@
       setStoredAcc(next);
       renderAccSwitch();
       renderTable();       // re-scopes list + badge, and repaints the dashboard if open
+      // Mid-edit the picker decides where the row lands, so re-state the target account.
+      if (editingId != null) setFormMode(true);
       haptic('success');
     }
 
@@ -2005,6 +2007,12 @@
       formSubtitle.textContent = t(formSubtitle.dataset.i18n);
       createBtn.textContent    = t(createBtn.dataset.i18n);
       cancelEditBtn.style.display = editing ? '' : 'none';
+      // Saving files the row under whatever the picker shows, so name that account here —
+      // otherwise switching the picker mid-edit would move the transaction invisibly.
+      if (editing){
+        const target = accById(activeAcc || editingAccId);
+        if (target) formSubtitle.textContent += ' · ' + t('field.account') + ': ' + Lycee.pickName(target);
+      }
     }
 
     async function startEdit(id){
@@ -2088,10 +2096,11 @@
       const category_id = parseInt(catSel.value, 10);
       const counterparty_id = parseInt(cpSel.value, 10);
       const provider_id = parseInt(pvSel.value, 10) || null;   // optional
-      // New transaction → the account chosen in the top bar; edit → the row's own account.
-      const account_id = editingId != null
-        ? (editingAccId != null ? Number(editingAccId) : null)
-        : (activeAcc ? Number(activeAcc) : null);
+      // The account always follows the top-bar picker — when creating AND when editing, so
+      // moving a transaction is just: open it, switch the picker, save. "All accounts" names
+      // no single account, so an edit made from there keeps the row where it already is.
+      const account_id = activeAcc ? Number(activeAcc)
+        : (editingAccId != null ? Number(editingAccId) : null);
       const comment = document.getElementById('comment').value.trim();
 
       // Name exactly which required fields are missing, so the popup is specific
