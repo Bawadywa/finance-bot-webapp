@@ -67,6 +67,22 @@
       -webkit-font-smoothing:antialiased;
       text-rendering:optimizeLegibility;
     }
+    /* ---------- Fullscreen safe areas ----------
+       In fullscreen the Mini App owns the whole screen: the status bar / notch and
+       Telegram's own floating controls (⋯ and ✕, top-right) now sit ON TOP of our page.
+       Telegram reports how much room they need via safeAreaInset + contentSafeAreaInset;
+       applyInsets() copies those into the --inset-* vars and we pad the page by them, so
+       the top bar lands below the native controls instead of underneath them. The
+       fallbacks apply when a client reports nothing (older desktop builds).
+       Only in fullscreen — in the normal launch mode Telegram's chrome is outside the
+       webview and no extra padding is wanted. box-sizing:border-box keeps the padding
+       inside 100dvh, so the views still fit exactly one screen. */
+    body.is-fullscreen{
+      padding-top:calc(0.875rem + var(--inset-top, 3.5rem));
+      padding-bottom:calc(0.875rem + var(--inset-bottom, 0px));
+      padding-left:calc(1rem + var(--inset-left, 0px));
+      padding-right:calc(1rem + var(--inset-right, 0px));
+    }
     body::before{
       content:"";
       position:fixed; inset:0; z-index:-1; pointer-events:none;
@@ -133,10 +149,6 @@
     .acc-manage .acc-opt-txt{ color:var(--purple-dk); font-weight:700; font-size:0.875rem; }
     .acc-manage svg{ flex:none; width:1rem; height:1rem; color:var(--purple-dk); }
     .acc-empty{ padding:0.625rem; color:var(--hint); font-size:0.8125rem; text-align:center; }
-    /* In Telegram fullscreen the native close/menu controls sit in the top-right corner
-       and overlap our buttons there — so centre them instead while fullscreen is on. */
-    body.is-fullscreen .topbar{ grid-template-columns:1fr auto 1fr; }
-    body.is-fullscreen .actions{ justify-self:center; }
     .icon-btn{
       display:inline-flex; align-items:center; gap:0.375rem;
       width:auto; margin:0; padding:0.5rem 0.75rem;
@@ -152,7 +164,6 @@
     .icon-btn:active{ transform:translateY(0.0625rem); }
     .icon-btn:disabled{ opacity:.6; cursor:default; }
     .icon-btn svg{ width:1.125rem; height:1.125rem; display:block; }
-    .icon-btn .lbl{ transform:translateY(0.0625rem); }
     /* Fullscreen toggle is only useful on desktop — mobile Telegram opens fullscreen by default */
     @media (hover:none) and (pointer:coarse){ .desktop-only{ display:none !important; } }
 
@@ -451,7 +462,8 @@
 
     /* ---------- Toast ---------- */
     .toast{
-      position:fixed; left:50%; bottom:1.5rem;
+      /* Lifted clear of the home-indicator / bottom inset when fullscreen. */
+      position:fixed; left:50%; bottom:calc(1.5rem + var(--inset-bottom, 0px));
       transform:translateX(-50%) translateY(1.125rem); opacity:0; pointer-events:none;
       background:var(--grad); color:#fff; padding:0.75rem 1.25rem; border-radius:62.4375rem;
       font-weight:700; font-size:0.875rem; box-shadow:0 0.625rem 1.875rem rgba(124,58,237,.30);
@@ -686,9 +698,12 @@
       <div class="acc-menu" id="accMenu" role="listbox" hidden></div>
     </div>
     <div class="actions">
-      <button class="icon-btn accent" id="settingsBtn" type="button" title="Налаштування">
+      <!-- Icon-only: the account picker now owns the left side of the top bar, so the
+           label is dropped and the name lives in the tooltip / aria-label instead. -->
+      <button class="icon-btn accent" id="settingsBtn" type="button"
+              data-i18n-title="btn.settings" title="Налаштування"
+              data-i18n-aria="btn.settings" aria-label="Налаштування">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span class="lbl" data-i18n="btn.settings">Налаштування</span>
       </button>
       <button class="icon-btn desktop-only" id="fsBtn" type="button" title="На весь екран">
         <svg id="fsExpand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -721,12 +736,8 @@
             <span class="date-value"></span>
           </div>
 
-          <!-- Which account the money moves on. The top-bar picker's "all accounts" is a
-               viewing mode only — a transaction always belongs to one specific account. -->
-          <label class="req" data-i18n="field.account">Рахунок</label>
-          <select id="account"><option value="" disabled selected data-i18n="ph.select">Оберіть…</option></select>
-          <p class="hint field-hint" id="accountHint" hidden data-i18n="hint.noaccounts">Створіть рахунок у налаштуваннях, щоб прив'язати транзакцію.</p>
-
+          <!-- No account field here: the transaction always lands on the account chosen in
+               the top-bar picker (which is why "all accounts" can't create one). -->
           <div class="row2">
             <div>
               <label class="req" data-i18n="field.total">Сума</label>
@@ -1039,9 +1050,65 @@
     const tg = (window.Telegram && window.Telegram.WebApp) || {
       ready(){}, expand(){}, onEvent(){}, themeParams:{}, colorScheme:'dark',
       showAlert(m){ alert(m); }, showConfirm(m,cb){ cb(confirm(m)); }, isFullscreen:false,
+      platform:'unknown', safeAreaInset:{top:0,bottom:0,left:0,right:0},
+      contentSafeAreaInset:{top:0,bottom:0,left:0,right:0},
       HapticFeedback:{ notificationOccurred(){}, impactOccurred(){} }
     };
     tg.ready(); tg.expand();
+
+    /* ---------------- Fullscreen: safe areas + which platforms it suits ----------------
+       A Mini App can be launched straight into fullscreen (the "open app" / Main Mini App
+       entry point sets tgWebAppFullscreen), and that changes the rules of the page:
+         · mobile — Telegram's ⋯ / ✕ controls and the status bar float OVER our content, so
+           the page must pad itself by the insets Telegram reports (safeAreaInset = device
+           notch/status bar, contentSafeAreaInset = room taken by Telegram's own controls);
+         · desktop — the client drops the Mini App window's frame, so it appears wherever the
+           client put it with no title bar left to drag: the window can't be moved. Fullscreen
+           there is a trap, so a launch-time fullscreen is dropped (the top-bar toggle still
+           lets you opt in deliberately).
+       Both inset objects and the fullscreen API arrived in Bot API 8.0; older clients report
+       nothing and requestFullscreen/exitFullscreen THROW, hence the fallbacks and try/catch. */
+    const MOBILE_PLATFORMS = ['android', 'android_x', 'ios'];
+    function isTouchDevice(){
+      try { return window.matchMedia('(hover:none) and (pointer:coarse)').matches; }
+      catch(e){ return false; }
+    }
+    // Desktop = not a known mobile client AND not a touch screen, so an unknown platform on a
+    // phone keeps its fullscreen rather than being forced out of it.
+    function isDesktopLike(){
+      return MOBILE_PLATFORMS.indexOf(String(tg.platform || '').toLowerCase()) === -1 && !isTouchDevice();
+    }
+    // Telegram reports insets only from Bot API 8.0 on. When a client stays silent the top
+    // fallback (--inset-top's 3.5rem default in the stylesheet) still clears its controls.
+    const FS_TOP_FALLBACK_PX = 56;
+    function applyInsets(){
+      const s = document.documentElement.style;
+      if (!inFullscreen()){                  // normal launch → Telegram's chrome is outside the webview
+        ['top','bottom','left','right'].forEach(k => s.removeProperty('--inset-' + k));
+        return;
+      }
+      const sa = tg.safeAreaInset || {}, ca = tg.contentSafeAreaInset || {};
+      const num = (v) => Number(v) || 0;
+      // The two insets stack: contentSafeAreaInset measures Telegram's own controls, which sit
+      // BELOW the device notch/status bar that safeAreaInset covers. (If a client ever reported
+      // the content inset from the window edge instead, the top gap would look too tall — the
+      // fix would be dropping `sa.top` from this one sum.)
+      const top = num(sa.top) + num(ca.top);
+      s.setProperty('--inset-top', Math.max(top, FS_TOP_FALLBACK_PX) + 'px');
+      s.setProperty('--inset-bottom', (num(sa.bottom) + num(ca.bottom)) + 'px');
+      s.setProperty('--inset-left', (num(sa.left) + num(ca.left)) + 'px');
+      s.setProperty('--inset-right', (num(sa.right) + num(ca.right)) + 'px');
+    }
+    // Drop a launch-time fullscreen on desktop, where it leaves an unmovable window. The
+    // client only clears isFullscreen once it answers with fullscreenChanged, so the pending
+    // flag keeps the page from painting fullscreen padding it is about to lose.
+    let fsExitPending = false;
+    function normalizeFullscreen(){
+      if (!tg.isFullscreen || !isDesktopLike()) return;
+      try { tg.exitFullscreen(); fsExitPending = true; }
+      catch(e){ console.warn('[Lycee] exitFullscreen unsupported by this client', e); }
+    }
+    function inFullscreen(){ return !!tg.isFullscreen && !fsExitPending; }
 
     /* ---------------- i18n (Ukrainian only) ----------------
        The app ships in a single language, so this is a flat key→string map rather
@@ -1054,15 +1121,16 @@
         'btn.save':'Зберегти зміни', 'btn.cancel':'Скасувати', 'toast.updated':'Транзакцію оновлено',
         'field.date':'Дата', 'field.total':'Сума', 'field.currency':'Валюта', 'field.type':'Тип',
         'field.category':'Категорія', 'field.counterparty':'Контрагент', 'field.comment':'Коментар',
-        'field.provider':'Постачальник', 'field.account':'Рахунок',
+        'field.provider':'Постачальник',
         'ph.date':'📅 Оберіть дату', 'ph.comment':'За що?', 'ph.select':'Оберіть…',
         'btn.create':'Створити транзакцію',
         'toast.created':'Транзакцію додано',
         'toast.error':'Сталася помилка',
         'alert.missing':'Заповніть, будь ласка:',
+        'alert.pickaccount':'Оберіть конкретний рахунок угорі ліворуч — транзакція має належати одному рахунку.',
         'warn.payable':'Погашена кредиторка перевищує нараховану для цього контрагента на',
         'hint.config':'⚠ Вкажіть API_BASE у config.js',
-        'hint.noaccounts':'Створіть рахунок у налаштуваннях, щоб прив\'язати транзакцію.',
+        'alert.nofullscreen':'Ця версія Telegram не підтримує повноекранний режим.',
         'table.title':'Транзакції', 'table.subtitle':'Усе, що ви додали.',
         'th.date':'Дата', 'th.total':'Сума', 'th.currency':'Валюта', 'th.type':'Тип',
         'th.category':'Категорія', 'th.counterparty':'Контрагент', 'th.comment':'Коментар',
@@ -1135,6 +1203,8 @@
       document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
       document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
       document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+      // Icon-only buttons carry their name in aria-label, so it needs localizing too.
+      document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
       document.documentElement.lang = 'uk';
       refillSelects();
       renderTable();
@@ -1176,20 +1246,36 @@
     const fsExpand = document.getElementById('fsExpand');
     const fsCompress = document.getElementById('fsCompress');
     function updateFsIcon(){
-      const on = !!tg.isFullscreen;
+      const on = inFullscreen();
       fsExpand.style.display = on ? 'none' : 'block';
       fsCompress.style.display = on ? 'block' : 'none';
-      // Drives the centred top-bar layout (see body.is-fullscreen in the stylesheet).
+      // Gates the safe-area padding (see body.is-fullscreen in the stylesheet).
       document.body.classList.toggle('is-fullscreen', on);
+      applyInsets();
     }
     fsBtn.onclick = () => {
-      if (typeof tg.requestFullscreen !== 'function'){
-        if (typeof tg.showAlert === 'function') tg.showAlert('Fullscreen is not supported on this Telegram version.');
-        return;
+      // Present on every SDK build but throws below Bot API 8.0, so the guard is a try/catch.
+      try { if (tg.isFullscreen) tg.exitFullscreen(); else tg.requestFullscreen(); }
+      catch(e){
+        console.warn('[Lycee] fullscreen unsupported by this client', e);
+        notify(t('alert.nofullscreen'));
       }
-      if (tg.isFullscreen) tg.exitFullscreen(); else tg.requestFullscreen();
     };
-    if (typeof tg.onEvent === 'function') tg.onEvent('fullscreenChanged', updateFsIcon);
+    if (typeof tg.onEvent === 'function'){
+      tg.onEvent('fullscreenChanged', () => { fsExitPending = false; updateFsIcon(); });
+      // The insets change on their own: rotation, keyboard, and Telegram moving its controls.
+      tg.onEvent('safeAreaChanged', applyInsets);
+      tg.onEvent('contentSafeAreaChanged', applyInsets);
+      tg.onEvent('viewportChanged', applyInsets);
+      // Payload is { error: 'UNSUPPORTED' | 'ALREADY_FULLSCREEN' }.
+      tg.onEvent('fullscreenFailed', (e) => {
+        const err = e && e.error;
+        console.warn('[Lycee] fullscreenFailed', err);
+        if (err === 'UNSUPPORTED') notify(t('alert.nofullscreen'));
+        updateFsIcon();
+      });
+    }
+    normalizeFullscreen();   // desktop: don't stay in an unmovable fullscreen window
     updateFsIcon();
 
     /* ---------------- Helpers ---------------- */
@@ -1258,7 +1344,6 @@
     const accTrigger = document.getElementById('accTrigger');
     const accMenu    = document.getElementById('accMenu');
     const accNameEl  = document.getElementById('accName');
-    const accSel     = document.getElementById('account');
 
     // Account of a transaction — the nested object when the API sent it, flat id otherwise.
     function txAccId(tx){ return (tx.account && tx.account.id != null) ? tx.account.id : tx.account_id; }
@@ -1337,20 +1422,11 @@
       if (next === String(activeAcc || '')) return;
       setStoredAcc(next);
       renderAccSwitch();
-      syncFormAccount();   // the form follows the picker (unless a row is being edited)
       renderTable();       // re-scopes list + badge, and repaints the dashboard if open
       haptic('success');
     }
-    // The form's account follows the picker. "All accounts" is a viewing mode, so there the
-    // field starts on the placeholder and the user must pick one; mid-edit the row keeps its own.
-    function syncFormAccount(){
-      if (editingId != null) return;
-      if (activeAcc && accById(activeAcc)) accSel.value = String(activeAcc);
-      else accSel.selectedIndex = 0;
-      if (window.LyceeUI) LyceeUI.refreshAll();
-    }
 
-    /* ---------------- Dropdowns (Type / Category / Counterparty / Provider / Account) ---------------- */
+    /* ---------------- Dropdowns (Type / Category / Counterparty / Provider) ---------------- */
     const typeSel = document.getElementById('type');
     const catSel  = document.getElementById('category');
     const cpSel   = document.getElementById('counterparty');
@@ -1372,12 +1448,6 @@
       if (!typeSel) return;
       fillSelect(typeSel, TYPES); fillSelect(catSel, CATS);
       fillSelect(cpSel, CPS); fillSelect(pvSel, PVS);
-      // Accounts: keep whatever is selected if it still exists, otherwise fall back to
-      // the picker's account. The hint tells a user with no accounts yet where to make one.
-      const keepAcc = accSel.value;
-      fillSelect(accSel, ACCS);
-      if (keepAcc && accById(keepAcc)) accSel.value = keepAcc; else syncFormAccount();
-      document.getElementById('accountHint').hidden = ACCS.length > 0;
       if (window.LyceeUI) LyceeUI.refreshAll();  // reflect new options in custom selects
     }
     async function loadOptions(){
@@ -1780,6 +1850,10 @@
     const formSubtitle = document.querySelector('#view-new .subtitle');
 
     let editingId = null;   // null = create mode; otherwise the id being edited
+    // The edited row's own account. A new transaction takes the picker's account, but an
+    // edit must not silently move the row somewhere else (you can edit while viewing
+    // "all accounts", where the picker names no single account).
+    let editingAccId = null;
 
     // id from a nested reference object ({id,name_*}) with a flat *_id fallback
     function refId(obj, fallback){ return (obj && obj.id != null) ? obj.id : (fallback != null ? fallback : ''); }
@@ -1790,7 +1864,6 @@
       typeSel.selectedIndex = 0; cpSel.selectedIndex = 0; pvSel.selectedIndex = 0;
       // No type selected → no categories. Empty the list, not just the selection.
       CATS = []; fillSelect(catSel, CATS);
-      syncFormAccount();   // back to the account the picker is on
       if (window.LyceeUI) LyceeUI.refreshAll();
       validatePayable();  // clears the payable warning (no type/cp/total selected)
     }
@@ -1825,11 +1898,9 @@
       // rather than leaving whatever the previous edit selected.
       const pvId = refId(tx.provider, tx.provider_id);
       if (pvId === '' || pvId == null) pvSel.selectedIndex = 0; else pvSel.value = String(pvId);
-      // The row keeps its own account. An older row that has none lands on the placeholder,
-      // so saving it now requires choosing one (same rule as a new transaction).
+      // Keep the row on its own account (null for rows booked before accounts existed).
       const accId = refId(tx.account, tx.account_id);
-      if (accId === '' || accId == null || !accById(accId)) accSel.selectedIndex = 0;
-      else accSel.value = String(accId);
+      editingAccId = (accId === '' || accId == null) ? null : accId;
       document.getElementById('comment').value = tx.comment || '';
       if (window.LyceeUI) LyceeUI.refreshAll();  // reflect pre-filled values in custom widgets
       setFormMode(true);
@@ -1838,7 +1909,7 @@
       views.new.scrollTop = 0;
     }
 
-    function cancelEdit(){ editingId = null; resetForm(); setFormMode(false); }
+    function cancelEdit(){ editingId = null; editingAccId = null; resetForm(); setFormMode(false); }
     cancelEditBtn.onclick = () => { cancelEdit(); showView('table'); };
 
     // Live, non-blocking guard: a "Payable settled" entry shouldn't make the total
@@ -1890,7 +1961,10 @@
       const category_id = parseInt(catSel.value, 10);
       const counterparty_id = parseInt(cpSel.value, 10);
       const provider_id = parseInt(pvSel.value, 10) || null;   // optional
-      const account_id = parseInt(accSel.value, 10) || null;
+      // New transaction → the account chosen in the top bar; edit → the row's own account.
+      const account_id = editingId != null
+        ? (editingAccId != null ? Number(editingAccId) : null)
+        : (activeAcc ? Number(activeAcc) : null);
       const comment = document.getElementById('comment').value.trim();
 
       // Name exactly which required fields are missing, so the popup is specific
@@ -1901,10 +1975,10 @@
       if (!type_id) missing.push(t('field.type'));
       if (!category_id) missing.push(t('field.category'));
       if (!counterparty_id) missing.push(t('field.counterparty'));
-      // Required as soon as the user has any account — a ledger with none yet still works
-      // (account stays null) so accounts can be adopted without blocking existing use.
-      if (ACCS.length && !account_id) missing.push(t('field.account'));
       if (missing.length){ notify(t('alert.missing') + ' ' + missing.join(', ')); return; }
+      // The account comes from the top-bar picker, so "all accounts" can't book one — point
+      // at the picker instead. A ledger with no accounts at all still works (account stays null).
+      if (editingId == null && ACCS.length && !activeAcc){ notify(t('alert.pickaccount')); return; }
       if (!Lycee.configured){ notify(t('hint.config')); return; }
 
       const payload = { occured_at: date, total, currency, type_id, category_id, counterparty_id, provider_id, account_id, comment };
