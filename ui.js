@@ -1,5 +1,5 @@
 /* ============================================================================
-   Lycee Web App — desktop UI enhancer (custom selects + date picker)
+   Finance bot Web App — desktop UI enhancer (custom selects + date picker)
    ----------------------------------------------------------------------------
    Native <select> and <input type="date"> can't be styled or animated, so on
    DESKTOP (pointer:fine / non-touch) we replace them with custom widgets that
@@ -12,7 +12,7 @@
    <select>/<input>, keep its .value in sync, and dispatch a 'change' event, so
    the rest of the app keeps reading the native elements unchanged.
 
-   Public API (window.LyceeUI):
+   Public API (window.AppUI):
      enhanceAll()  — wrap every <select> and date <input> once (no-op on touch)
      refreshAll()  — re-sync every widget's visible label from its native value
                      (call after the app changes a value programmatically or
@@ -187,9 +187,9 @@
   function toISO(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function parseISO(s) { if (!s) return null; var p = String(s).split('-'); if (p.length !== 3) return null; var d = new Date(+p[0], +p[1] - 1, +p[2]); return isNaN(d) ? null : d; }
   function stripTime(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-  // The app is Ukrainian-only, so the widgets' own labels are hard-coded rather than
+  // The app is Russian-only, so the widgets' own labels are hard-coded rather than
   // read from a dictionary (they're a handful of words the page never re-localizes).
-  function locale() { return 'uk-UA'; }
+  function locale() { return 'ru-RU'; }
 
   function enhanceDate(input) {
     if (input._ui) return;
@@ -214,7 +214,7 @@
     function placeholderText() {
       var ph = wrap.parentNode.querySelector('.date-placeholder');
       var txt = ph ? ph.textContent.replace(/^📅\s*/, '').trim() : '';
-      return txt || 'Оберіть дату';
+      return txt || 'Выберите дату';
     }
     function refresh() {
       var d = parseISO(input.value);
@@ -234,8 +234,8 @@
       var startDow = (first.getDay() + 6) % 7; // Monday-first
       var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
       var title = new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(first);
-      // Capitalize only the FIRST letter (not every word) so the Ukrainian year suffix stays
-      // lowercase "р." — CSS text-transform:capitalize used to turn it into "Р.".
+      // Capitalize only the FIRST letter (not every word) so the trailing year suffix some
+      // locales add stays lowercase — CSS text-transform:capitalize used to upper-case it.
       title = title.charAt(0).toUpperCase() + title.slice(1);
       var dows = [];
       for (var i = 0; i < 7; i++) dows.push(new Intl.DateTimeFormat(locale(), { weekday: 'short' }).format(new Date(2024, 0, 1 + i))); // 2024-01-01 = Monday
@@ -263,8 +263,8 @@
       pop.querySelector('.ui-cal-title').textContent = title;
       var dowEls = pop.querySelectorAll('.ui-cal-dow');
       for (var k = 0; k < 7; k++) dowEls[k].textContent = dows[k];
-      pop.querySelector('[data-act="clear"]').textContent = 'Очистити';
-      pop.querySelector('[data-act="today"]').textContent = 'Сьогодні';
+      pop.querySelector('[data-act="clear"]').textContent = 'Очистить';
+      pop.querySelector('[data-act="today"]').textContent = 'Сегодня';
 
       pop.querySelectorAll('[data-nav]').forEach(function (b) { b.addEventListener('click', function () { shift(Number(b.dataset.nav)); }); });
       pop.querySelectorAll('.ui-cal-day:not(.empty):not(.disabled)').forEach(function (c) { c.addEventListener('click', function () { pick(c.dataset.iso); }); });
@@ -334,7 +334,7 @@
 
     var pop = null;
 
-    function allLabel() { return 'Усі'; }
+    function allLabel() { return 'Все'; }
     function selectedOpts() { return Array.from(sel.selectedOptions); }
     function realOpts() { return Array.from(sel.options).filter(function (o) { return !(o.value === '' && o.disabled); }); }
 
@@ -342,7 +342,7 @@
       var s = selectedOpts();
       if (!s.length) { label.textContent = allLabel(); trigger.classList.add('placeholder'); }
       else if (s.length === 1) { label.textContent = s[0].textContent; trigger.classList.remove('placeholder'); }
-      else { label.textContent = s.length + ' вибрано'; trigger.classList.remove('placeholder'); }
+      else { label.textContent = 'Выбрано: ' + s.length; trigger.classList.remove('placeholder'); }
     }
     function syncRows() {
       if (!pop) return;
@@ -411,7 +411,7 @@
     refreshLabel();
   }
 
-  window.LyceeUI = {
+  window.AppUI = {
     enhanceAll: function () {
       // Multi-selects get a custom checklist on EVERY device (native <select multiple> is
       // clumsy on desktop and mobile alike); single selects + dates stay native on touch.

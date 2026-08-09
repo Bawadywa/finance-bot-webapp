@@ -1,5 +1,5 @@
 /* ============================================================================
-   Lycee Web App — runtime config
+   Finance bot Web App — runtime config
    ----------------------------------------------------------------------------
    Edit THIS file only. It's the single place the front-end reads the backend
    location from, so when ngrok hands you a new URL you change it here once
@@ -15,7 +15,7 @@
                 (never a made-up number like 123456789 — that just pollutes the DB).
                 For one-off browser tests prefer the ?uid=<your id> query param.
    ============================================================================ */
-window.LYCEE_CONFIG = {
+window.APP_CONFIG = {
   API_BASE: 'https://dominion-strenuous-wrongful.ngrok-free.dev',
   DEV_USER_ID: 0,
   // Flip to true to show the on-screen "🐞 logs" button + console panel (handy on

@@ -1,7 +1,7 @@
 /* ============================================================================
-   Lycee Web App — tiny API client (shared by all tabs)
+   Finance bot Web App — tiny API client (shared by all tabs)
    ----------------------------------------------------------------------------
-   Exposes a global `Lycee` object. Loaded AFTER config.js and the Telegram
+   Exposes a global `App` object. Loaded AFTER config.js and the Telegram
    web-app script, BEFORE each page's inline script.
 
    Why a wrapper:
@@ -13,7 +13,7 @@
    - keeps the 3 HTML pages small and consistent.
    ============================================================================ */
 (function () {
-  var cfg = window.LYCEE_CONFIG || {};
+  var cfg = window.APP_CONFIG || {};
   var tg = (window.Telegram && window.Telegram.WebApp) || null;
 
   // Initialise the Telegram WebApp as early as possible so initDataUnsafe.user
@@ -34,7 +34,7 @@
   // There is intentionally NO fake fallback id anymore. If we can't find a real
   // Telegram id and no explicit ?uid= test override is given, userId stays 0 and
   // we DO NOT create a user — so a junk id like 123456789 can never be created.
-  var UID_KEY = 'lycee_uid';
+  var UID_KEY = 'app_uid';
   function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function lsSet(k,v){ try { localStorage.setItem(k, v); } catch(e){} }
 
@@ -85,10 +85,10 @@
   var inTelegram = (userSrc === 'telegram' || userSrc === 'stored-telegram');
   try {
     if (userSrc === 'none') {
-      console.error('[Lycee] No Telegram user id found — app was not opened from Telegram ' +
+      console.error('[App] No Telegram user id found — app was not opened from Telegram ' +
         'and no ?uid= / DEV_USER_ID is set. NOT creating a user.');
     } else {
-      console.info('[Lycee] user_id =', userId, '(source: ' + userSrc + ')');
+      console.info('[App] user_id =', userId, '(source: ' + userSrc + ')');
     }
   } catch (e) {}
 
@@ -126,7 +126,7 @@
   // the last known list per user. Every tab paints its count badge (and the
   // table its rows) from this cache INSTANTLY on load — no flash to 0 and back.
   // A background fetch then reconciles silently and only updates if it differs.
-  var TX_KEY = 'lycee_tx_' + (userId || 'anon');
+  var TX_KEY = 'app_tx_' + (userId || 'anon');
   function getCachedTx() {
     try { var v = JSON.parse(localStorage.getItem(TX_KEY)); return Array.isArray(v) ? v : null; }
     catch (e) { return null; }
@@ -193,7 +193,7 @@
   /* -------- user --------
      The "create user" POST is fired immediately when the app opens (see the
      auto-call near the bottom). It's memoised, so each page's init can call
-     ensureUser() / await Lycee.ready again without sending a second request. */
+     ensureUser() / await App.ready again without sending a second request. */
   var _userPromise = null;
   function ensureUser() {
     if (_userPromise) return _userPromise;
@@ -202,7 +202,7 @@
       if (!base) return null; // API_BASE not set yet — nothing to call
       try {
         return await req('/user', { method: 'POST' }); // user derived from initData header
-      } catch (e) { console.error('[Lycee] ensureUser failed', e); return null; }
+      } catch (e) { console.error('[App] ensureUser failed', e); return null; }
     })();
     return _userPromise;
   }
@@ -278,8 +278,8 @@
      FIRST frame — hence the same cache-then-reconcile trick the transactions use.
      The active account is the app-wide scope ('' = all accounts) and is remembered
      per user until they pick another one. */
-  var ACC_KEY = 'lycee_accs_' + (userId || 'anon');
-  var ACTIVE_ACC_KEY = 'lycee_acc_active_' + (userId || 'anon');
+  var ACC_KEY = 'app_accs_' + (userId || 'anon');
+  var ACTIVE_ACC_KEY = 'app_acc_active_' + (userId || 'anon');
   function getCachedAccounts() {
     try { var v = JSON.parse(localStorage.getItem(ACC_KEY)); return Array.isArray(v) ? v : null; }
     catch (e) { return null; }
@@ -313,7 +313,7 @@
 
   /* -------- helpers -------- */
   // Display label for a reference object ({id, name}). Reference data is single-name
-  // (Ukrainian) now — the old bilingual name_en/name_uk pair is kept only as a fallback
+  // (Russian) now — the old bilingual name_en/name_uk pair is kept only as a fallback
   // so a stale cached transaction still renders a label instead of a blank cell.
   function pickName(obj) {
     if (!obj) return '';
@@ -323,7 +323,7 @@
   // Immediately create the user the moment the web app opens.
   var ready = ensureUser();
 
-  window.Lycee = {
+  window.App = {
     base: base,
     userId: userId,
     initData: initData,
