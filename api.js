@@ -136,15 +136,17 @@
   }
   // Count as the UI shows it: scoped to the active account when one is selected. The badge
   // is painted from here on DOM-ready, so it must apply the same scope the views do —
-  // otherwise it would flash (and then overwrite) an all-accounts number.
+  // otherwise it would flash (and then overwrite) an all-accounts number. A transfer counts
+  // on both of its accounts, matching scopedTX() in index.html.
   function cachedCount() {
     var c = getCachedTx();
     if (!c) return null;
     var acc = getActiveAccount();
     if (!acc) return c.length;
+    function refId(obj, flat) { return (obj && obj.id != null) ? obj.id : flat; }
     return c.filter(function (tx) {
-      var id = (tx.account && tx.account.id != null) ? tx.account.id : tx.account_id;
-      return String(id) === String(acc);
+      return String(refId(tx.account_from, tx.account_from_id)) === String(acc)
+          || String(refId(tx.account_to, tx.account_to_id)) === String(acc);
     }).length;
   }
 
@@ -211,6 +213,10 @@
   // Categories are scoped to a transaction type — the backend requires type_id and
   // returns only the categories that belong to it. Pass the selected type's id.
   function getCategories(typeId) { return req('/categories' + qp({ type_id: typeId })); }
+  // The user's OWN categories, across every type — what the Settings section lists and the
+  // only ones they may rename or delete. The seeded ones (user_id IS NULL) are shared and
+  // deliberately excluded, which is what /me means here: scoped to the caller, not to a type.
+  function getOwnCategories() { return req('/categories/me' + qp()); }
   function getCounterparties() { return req('/counterparties' + qp()); } // user from initData header
   function getProviders() { return req('/providers' + qp()); }           // user from initData header
   function getTransactionTypes() { return req('/types' + qp()); }        // user from initData header
@@ -219,6 +225,18 @@
      Counterparties and providers are user-owned reference lists. The backend derives
      the owner from the initData header, so only { name } goes on the wire; DELETE takes
      a JSON body { id } and 404s when the row isn't the caller's to remove. */
+  // Categories follow the same owner-from-initData contract as the dictionaries above.
+  // PUT/DELETE only ever reach the user's own rows — the seeded ones belong to nobody
+  // (user_id IS NULL) and 404 — which is why Settings lists own categories exclusively.
+  function createCategory(name) {
+    return req('/category', { method: 'POST', body: JSON.stringify({ name: name }) });
+  }
+  function updateCategory(id, name) {
+    return req('/category', { method: 'PUT', body: JSON.stringify({ id: Number(id), name: name }) });
+  }
+  function deleteCategory(id) {
+    return req('/category', { method: 'DELETE', body: JSON.stringify({ id: Number(id) }) });
+  }
   function createCounterparty(name) {
     return req('/counterparty', { method: 'POST', body: JSON.stringify({ name: name }) });
   }
@@ -253,8 +271,8 @@
 
   /* -------- accounts --------
      Same owner-from-initData contract as the dictionaries above, plus an opening
-     balance. Deleting an account leaves its transactions in place with account_id
-     cleared (the FK is ON DELETE SET NULL). */
+     balance. Deleting an account leaves its transactions in place with account_from_id /
+     account_to_id cleared (both FKs are ON DELETE SET NULL). */
   async function getAccounts() {
     var list = await req('/accounts' + qp());
     setCachedAccounts(list || []);
@@ -297,6 +315,9 @@
     setCachedTx(list || []);
     return list || [];
   }
+  // `data.account_from_id` is the account the money moves on (TransactionCreate). A transfer
+  // also carries `account_to_id` — the account it lands on, account_from being the one it
+  // leaves; every other type sends null there.
   function createTransaction(data) {
     return req('/transaction', { method: 'POST', body: JSON.stringify(data) });
   }
@@ -333,6 +354,10 @@
     req: req,
     ensureUser: ensureUser,
     getCategories: getCategories,
+    getOwnCategories: getOwnCategories,
+    createCategory: createCategory,
+    updateCategory: updateCategory,
+    deleteCategory: deleteCategory,
     getCounterparties: getCounterparties,
     getProviders: getProviders,
     getTransactionTypes: getTransactionTypes,

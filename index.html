@@ -116,8 +116,8 @@
     .actions{ justify-self:end; display:flex; gap:0.5rem; }
 
     /* ---------- Account switcher (top-left, where the wordmark used to be) ----------
-       The app-wide scope selector: the chosen account filters the Transactions list and
-       the Dashboard, and pre-selects itself on the New-transaction form. */
+       The app-wide VIEW selector: the chosen account filters the Transactions list and the
+       Dashboard and shows its balance. It does not affect the New-transaction form. */
     .acc-switch{ justify-self:start; position:relative; min-width:0; }
     .acc-trigger{
       display:inline-flex; align-items:center; gap:0.4375rem; max-width:min(58vw,15rem);
@@ -596,6 +596,11 @@
     }
     .subtab:hover:not(.active){ color:var(--orange-dk); background:var(--hover); }
     .subtab.active{ color:#fff; background:var(--grad); box-shadow:0 0.1875rem 0.5rem rgba(249,115,22,.24); }
+    /* Four sections don't fit a phone at the base size — tighten rather than ellipsize. */
+    @media (max-width:430px){
+      .subtabs{ gap:0.125rem; padding:0.1875rem; }
+      .subtab{ padding:0.5rem 0.25rem; font-size:0.6875rem; }
+    }
 
     /* ---------- Settings › section panels (accounts / counterparties / providers) ---------- */
     .dict-card{ margin-bottom:0.875rem; }
@@ -652,6 +657,10 @@
     .dict-cp .dict-dot{ background:var(--orange); }
     .dict-pv .dict-dot{ background:var(--purple); }
     .dict-acc .dict-dot{ background:var(--recv); }
+    .dict-cat .dict-dot{ background:var(--pos); }
+    /* The category add-form carries a hint under the field, like the accounts one. */
+    .dict-form-cat{ flex-wrap:wrap; }
+    .dict-form-cat .field-hint{ flex:1 0 100%; }
     /* Accounts take a name, a currency and an opening balance — more than one row can hold on
        a phone: name spans the top, then currency | balance | submit, hint underneath. */
     .dict-form-acc{ display:grid; grid-template-columns:1fr 1fr auto; gap:0.5rem; align-items:center; }
@@ -831,8 +840,6 @@
             <span class="date-value"></span>
           </div>
 
-          <!-- No account field here: the transaction always lands on the account chosen in
-               the top-bar picker (which is why "all accounts" can't create one). -->
           <div class="row2">
             <div>
               <label class="req" data-i18n="field.total">Сумма</label>
@@ -851,6 +858,23 @@
 
           <label class="req" data-i18n="field.type">Тип</label>
           <select id="type"><option value="" disabled selected data-i18n="ph.select">Выберите…</option></select>
+
+          <!-- Account(s) — right under the type, because the type decides how many there are.
+               The form names its own accounts and ignores the top-bar picker entirely (that
+               one only changes what you're looking at), so an edit can move a transaction
+               between accounts without re-scoping the app. A transfer moves money between two
+               of your own accounts, so that type reveals the second cell and turns the first
+               into the source — see syncAccountFields(). -->
+          <div id="accountRow">
+            <div>
+              <label class="req" id="accountFromLabel" data-i18n="field.account">Счёт</label>
+              <select id="account"><option value="" disabled selected data-i18n="ph.select">Выберите…</option></select>
+            </div>
+            <div id="accountToCell" hidden>
+              <label class="req" data-i18n="field.account.to">На счёт</label>
+              <select id="accountTo"><option value="" disabled selected data-i18n="ph.select">Выберите…</option></select>
+            </div>
+          </div>
 
           <label class="req" data-i18n="field.category">Категория</label>
           <select id="category"><option value="" disabled selected data-i18n="ph.select">Выберите…</option></select>
@@ -1088,6 +1112,7 @@
 
         <nav class="subtabs" id="setTabs">
           <button class="subtab active" type="button" data-set="acc" data-i18n="set.acc.title">Счета</button>
+          <button class="subtab" type="button" data-set="cat" data-i18n="set.cat.title">Категории</button>
           <button class="subtab" type="button" data-set="cp" data-i18n="set.cp.title">Контрагенты</button>
           <button class="subtab" type="button" data-set="pv" data-i18n="set.pv.title">Поставщики</button>
         </nav>
@@ -1120,6 +1145,29 @@
             <input id="accSearch" type="search" autocomplete="off" data-i18n-ph="set.ph.search" placeholder="Поиск…" />
           </div>
           <ul class="dict-list" id="accList"></ul>
+        </div>
+
+        <!-- Categories — the user's own only. The seeded ones are shared by everybody and
+             aren't theirs to rename or delete, so they're not listed here at all. -->
+        <div class="card dict-card dict-cat" id="setPanel-cat" hidden>
+          <div class="dict-head">
+            <h3 data-i18n="set.cat.title">Категории</h3>
+            <span class="dict-count" id="catCount">0</span>
+            <button class="dict-add-toggle" id="catAddToggle" type="button" aria-expanded="false"
+                    data-i18n-title="set.add" title="Добавить" data-i18n-aria="set.add" aria-label="Добавить">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </button>
+          </div>
+          <div class="dict-form dict-form-cat" id="catAddForm" hidden>
+            <input id="catNew" type="text" maxlength="25" autocomplete="off"
+                   data-i18n-ph="set.ph.cat" placeholder="Новая категория" />
+            <button class="dict-submit" id="catAddBtn" type="button" data-i18n="set.add">Добавить</button>
+            <p class="hint field-hint" data-i18n="set.cat.hint">Свои категории доступны для любого типа транзакции. Стандартные изменить нельзя.</p>
+          </div>
+          <div class="dict-search" id="catSearchWrap" hidden>
+            <input id="catSearch" type="search" autocomplete="off" data-i18n-ph="set.ph.search" placeholder="Поиск…" />
+          </div>
+          <ul class="dict-list" id="catList"></ul>
         </div>
 
         <!-- Counterparties -->
@@ -1246,12 +1294,15 @@
         'field.date':'Дата', 'field.total':'Сумма', 'field.currency':'Валюта', 'field.type':'Тип',
         'field.category':'Категория', 'field.counterparty':'Контрагент', 'field.comment':'Комментарий',
         'field.provider':'Поставщик', 'field.account':'Счёт',
+        // A transfer names both ends; every other type books onto the single 'field.account'.
+        'field.account.from':'Со счёта', 'field.account.to':'На счёт',
         'ph.date':'📅 Выберите дату', 'ph.comment':'За что?', 'ph.select':'Выберите…',
         'btn.create':'Создать транзакцию',
         'toast.created':'Транзакция добавлена',
         'toast.error':'Произошла ошибка',
         'alert.missing':'Пожалуйста, заполните:',
-        'alert.pickaccount':'Выберите конкретный счёт вверху слева — транзакция должна принадлежать одному счёту.',
+        'alert.sameaccount':'Счёт списания и счёт зачисления должны отличаться.',
+        'alert.noaccounts':'Сначала создайте счёт — транзакция всегда принадлежит счёту.',
         'warn.debt.repaid':'Возвращено больше, чем взято в долг у этого контрагента, на',
         'warn.debt.collected':'Получено больше, чем выдано в долг этому контрагенту, на',
         'hint.config':'⚠ Укажите API_BASE в config.js',
@@ -1305,6 +1356,13 @@
         'set.title':'Настройки',
         'set.cp.title':'Контрагенты', 'set.pv.title':'Поставщики',
         'set.ph.cp':'Новый контрагент', 'set.ph.pv':'Новый поставщик',
+        // Categories: this section lists only the user's own — the seeded ones are shared
+        // by everybody and aren't theirs to change, so they don't appear here at all.
+        'set.cat.title':'Категории', 'set.ph.cat':'Новая категория',
+        'set.cat.hint':'Свои категории доступны для любого типа транзакции.',
+        'set.cat.empty':'Пока нет своих категорий. Добавьте первую выше.',
+        'set.cat.added':'Категория добавлена', 'set.cat.deleted':'Категория удалена',
+        'set.confirm.cat':'Удалить категорию «%s»?',
         'set.ph.search':'Поиск…', 'set.nomatch':'Ничего не найдено',
         'set.save':'Сохранить', 'set.rename':'Переименовать', 'set.renamed':'Название изменено',
         'set.rename.failed':'Не удалось изменить название',
@@ -1454,18 +1512,18 @@
       if (name !== 'settings') lastMainView = name;
       if (name === 'table') reconcileTable();
       if (name === 'dash'){ reconcileTable(); dashShow(); }
-      if (name === 'settings') renderDicts();
+      if (name === 'settings'){ renderDicts(); loadOwnCategories(); }
     }
     tabBtns.forEach(b => { b.onclick = () => showView(b.dataset.view); });
     document.getElementById('settingsBtn').onclick = () => { showView('settings'); views.settings.scrollTop = 0; };
     document.getElementById('settingsBackBtn').onclick = () => showView(lastMainView);
 
-    /* ---------------- Accounts: top-bar picker = app-wide scope ----------------
-       `activeAcc` is the whole app's scope: an account id filters the Transactions list
-       and the Dashboard to that account; '' means "all accounts" (a viewing mode — the
-       New-transaction form still demands one specific account); null means the user has
-       never chosen, so the first account is adopted once the list loads.
-       The choice is persisted per user, so it survives reloads until they pick another. */
+    /* ---------------- Accounts: top-bar picker = app-wide VIEW scope ----------------
+       `activeAcc` decides what you're looking at and nothing else: an account id filters
+       the Transactions list and the Dashboard to that account and names whose balance the
+       picker shows; '' means "all accounts". It has no part in creating or editing a
+       transaction — the form carries its own account cells — so changing it mid-entry is
+       always safe. The choice is persisted per user and survives reloads. */
     let ACCS = App.cachedAccounts() || [];
     let activeAcc = App.getActiveAccount();   // null = never chosen · '' = all · id = one
     const accSwitch  = document.getElementById('accSwitch');
@@ -1474,13 +1532,23 @@
     const accNameEl  = document.getElementById('accName');
 
     // Account of a transaction — the nested object when the API sent it, flat id otherwise.
-    function txAccId(tx){ return (tx.account && tx.account.id != null) ? tx.account.id : tx.account_id; }
+    // The API calls the pair account_from / account_to (TransactionRead); for everything but
+    // a transfer only account_from is set, and it simply means "the account this is booked on".
+    function txAccId(tx){ return (tx.account_from && tx.account_from.id != null) ? tx.account_from.id : tx.account_from_id; }
+    // The DESTINATION account — only a transfer has one; it's the account the money lands on
+    // (`account_from` is then the one it leaves). Undefined everywhere else.
+    function txToAccId(tx){ return (tx.account_to && tx.account_to.id != null) ? tx.account_to.id : tx.account_to_id; }
+    // Does this transaction touch the given account, at either end?
+    function txInAcc(tx, id){
+      return String(txAccId(tx)) === String(id) || String(txToAccId(tx)) === String(id);
+    }
     function accById(id){ return ACCS.filter(a => String(a.id) === String(id))[0] || null; }
     // The transactions in scope. Every view derives its rows from here, so switching
-    // accounts re-scopes the whole app at once.
+    // accounts re-scopes the whole app at once. A transfer belongs to BOTH its accounts,
+    // so it stays visible whichever end you're looking at.
     function scopedTX(){
       if (!activeAcc) return TX;
-      return TX.filter(tx => String(txAccId(tx)) === String(activeAcc));
+      return TX.filter(tx => txInAcc(tx, activeAcc));
     }
     function setStoredAcc(v){ activeAcc = v; App.setActiveAccount(v); }
 
@@ -1490,12 +1558,13 @@
     function accCur(acc){ return (acc && acc.currency) || 'USDT'; }
     // Cash actually moved on an account, in that account's currency. Each transaction is
     // converted with the historical rate for its own date (see txAbsIn). Accrued-only rows
-    // moved no cash yet → txCash() returns '' and they're skipped.
+    // moved no cash yet → txCashFor() returns '' and they're skipped. A transfer counts on
+    // both accounts, with the direction each of them saw it from.
     function accCash(acc){
       const cur = accCur(acc);
       return TX.reduce((s, tx) => {
-        if (String(txAccId(tx)) !== String(acc.id)) return s;
-        const dir = txCash(tx);
+        if (!txInAcc(tx, acc.id)) return s;
+        const dir = txCashFor(tx, acc.id);
         if (!dir) return s;
         return s + (dir === 'in' ? 1 : -1) * txAbsIn(tx, cur);
       }, 0);
@@ -1563,8 +1632,8 @@
       setStoredAcc(next);
       renderAccSwitch();
       renderTable();       // re-scopes list + badge, and repaints the dashboard if open
-      // Mid-edit the picker decides where the row lands, so re-state the target account.
-      if (editingId != null) setFormMode(true);
+      // Deliberately does NOT touch the form: the picker only changes what you're looking
+      // at, never where a transaction lands. Switching it mid-entry or mid-edit is safe.
       haptic('success');
     }
 
@@ -1573,7 +1642,10 @@
     const catSel  = document.getElementById('category');
     const cpSel   = document.getElementById('counterparty');
     const pvSel   = document.getElementById('provider');
-    let TYPES = [], CATS = [], CPS = [], PVS = [];
+    // CATS is the type-scoped list behind the form's dropdown (refetched per type).
+    // OWN_CATS is every category the user created, for the Settings section — a different
+    // question with a different answer, so it's kept separate rather than derived.
+    let TYPES = [], CATS = [], CPS = [], PVS = [], OWN_CATS = [];
 
     // `keepOrder` leaves the list in the order the API sent it. Types are a fixed,
     // meaningful sequence (income → expense → transfer → the four debt movements), so
@@ -1593,7 +1665,53 @@
       if (!typeSel) return;
       fillSelect(typeSel, TYPES, true); fillSelect(catSel, CATS);
       fillSelect(cpSel, CPS); fillSelect(pvSel, PVS);
+      fillAccountSelects(); syncAccountFields();
       if (window.AppUI) AppUI.refreshAll();  // reflect new options in custom selects
+    }
+
+    /* ---------------- Account cells on the form ----------------
+       The form names its own accounts and is fully independent of the top-bar picker: that
+       picker is a VIEW control (which rows am I looking at, what are the balances) and has
+       no say in where a transaction lands. So the scope can be changed while writing or
+       editing a row without moving anything, and a transfer can name two accounts at once.
+       The only carry-over is within the form itself: after a successful create the chosen
+       account stays selected, since the next row is usually on the same one. */
+    const accSel     = document.getElementById('account');
+    const accToSel   = document.getElementById('accountTo');
+    const accountRow = document.getElementById('accountRow');
+    const accToCell  = document.getElementById('accountToCell');
+    const accFromLbl = document.getElementById('accountFromLabel');
+
+    // Select `id` when it still names a real account, otherwise fall back to "Выберите…".
+    function setAccValue(sel, id){
+      if (id !== '' && id != null && accById(id)) sel.value = String(id);
+      else sel.selectedIndex = 0;
+    }
+    function fillAccountSelects(){
+      if (!accSel) return;
+      // Both cells list every account; the same-account guard in createBtn keeps a transfer
+      // from pointing at itself (blanking the option would fight the user mid-choice).
+      const from = accSel.value, to = accToSel.value;
+      fillSelect(accSel, ACCS); fillSelect(accToSel, ACCS);
+      setAccValue(accSel, from); setAccValue(accToSel, to);
+    }
+    // Code of the type currently chosen on the form ('' when none is, or it's unknown).
+    function formTypeCode(){
+      const ty = TYPES.find(x => String(x.id) === String(typeSel.value));
+      return ty ? typeCodeOf(refStr(ty)) : '';
+    }
+    // Show one account cell, or two for a transfer (source + destination side by side).
+    function syncAccountFields(){
+      if (!accountRow) return;
+      const transfer = formTypeCode() === 'transfer';
+      accountRow.classList.toggle('row2', transfer);
+      accToCell.hidden = !transfer;
+      // Set the key, not the text: applyI18n() re-reads data-i18n and would undo a plain
+      // textContent swap. "Счёт" becomes "Со счёта" once there's a second one to tell it from.
+      accFromLbl.dataset.i18n = transfer ? 'field.account.from' : 'field.account';
+      accFromLbl.textContent = t(accFromLbl.dataset.i18n);
+      if (!transfer) accToSel.selectedIndex = 0;   // never submit a stale hidden destination
+      if (window.AppUI) AppUI.refreshAll();
     }
     async function loadOptions(){
       if (!App.configured){ const el = document.getElementById('themeHint'); if (el) el.textContent = t('hint.config'); return; }
@@ -1618,6 +1736,19 @@
         refillSelects();
         renderTable();   // the scope may have changed → re-filter the list + badge
       } catch(e){ console.error(e); showToast(t('toast.error')); }
+      loadOwnCategories();
+    }
+
+    // The user's own categories, for the Settings section. Fetched on its own rather than
+    // inside the Promise.all above: it feeds one settings panel, and a failure there must
+    // not take down the types / counterparties / providers / accounts the app can't run
+    // without. Re-fetched whenever Settings is opened, so a second device's edits show up.
+    async function loadOwnCategories(){
+      if (!App.configured) return;
+      try {
+        OWN_CATS = (await App.getOwnCategories()) || [];
+        renderDict('cat');
+      } catch(e){ console.warn('[App] own categories unavailable', e); }
     }
 
     // Fetch the categories belonging to the chosen transaction type and repopulate
@@ -1638,9 +1769,11 @@
     }
 
     // When the type changes, the previous category may no longer belong to it —
-    // reload the category list for the new type and clear the old selection.
+    // reload the category list for the new type and clear the old selection. The account
+    // cells follow too: only a transfer asks for a destination.
     if (typeSel) typeSel.addEventListener('change', () => {
       loadCategoriesForType(parseInt(typeSel.value, 10) || 0, false);
+      syncAccountFields();
     });
 
     /* ---------------- Transactions ---------------- */
@@ -1660,6 +1793,11 @@
     // its colour marks it as debt rather than income/expense. A transfer gets no sign.
     function txSign(tx){ const c = txCash(tx); return c === 'in' ? '+' : (c === 'out' ? '−' : ''); }
     function curSym(c){ return CUR_SYMBOL[c] || (c ? c + ' ' : ''); }
+    // Account label for the list — a transfer names both ends ("Наличные → Банк").
+    function accLabel(tx){
+      const from = App.pickName(tx.account_from), to = App.pickName(tx.account_to);
+      return to ? (from || '—') + ' → ' + to : from;
+    }
 
     /* ---------------- Transactions filters + sum row ---------------- */
     // Filter state for the Transactions table (empty string = no filter on that field).
@@ -1808,7 +1946,7 @@
           <td>${tx.category ? `<span class="cur-chip">${escapeHtml(App.pickName(tx.category))}</span>` : '—'}</td>
           <td>${escapeHtml(App.pickName(tx.counterparty) || '—')}</td>
           <td>${escapeHtml(App.pickName(tx.provider) || '—')}</td>
-          <td>${tx.account ? `<span class="cur-chip">${escapeHtml(App.pickName(tx.account))}</span>` : '—'}</td>
+          <td>${accLabel(tx) ? `<span class="cur-chip">${escapeHtml(accLabel(tx))}</span>` : '—'}</td>
           <td class="t-comment">${escapeHtml(tx.comment || '—')}</td>
           <td class="act"><div class="row-actions">
             <button class="edit" type="button" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
@@ -1828,8 +1966,9 @@
           tx.category ? `<span class="txc-chip">${escapeHtml(App.pickName(tx.category))}</span>` : '',
           tx.provider ? `<span class="txc-chip txc-chip-pv">${escapeHtml(App.pickName(tx.provider))}</span>` : '',
           // Only worth a chip when several accounts are in view — with one account selected
-          // the top bar already says which, and the card stays uncluttered.
-          (!activeAcc && tx.account) ? `<span class="txc-chip txc-chip-acc">${escapeHtml(App.pickName(tx.account))}</span>` : ''
+          // the top bar already says which, and the card stays uncluttered. A transfer is the
+          // exception: the account at the other end is news even inside a single account.
+          ((!activeAcc || tx.account_to) && accLabel(tx)) ? `<span class="txc-chip txc-chip-acc">${escapeHtml(accLabel(tx))}</span>` : ''
         ].join('');
         const comment = tx.comment ? `<div class="txc-comment">${escapeHtml(tx.comment)}</div>` : '';
         return `
@@ -1982,10 +2121,6 @@
     const formSubtitle = document.querySelector('#view-new .subtitle');
 
     let editingId = null;   // null = create mode; otherwise the id being edited
-    // The edited row's own account. A new transaction takes the picker's account, but an
-    // edit must not silently move the row somewhere else (you can edit while viewing
-    // "all accounts", where the picker names no single account).
-    let editingAccId = null;
 
     // id from a nested reference object ({id,name_*}) with a flat *_id fallback
     function refId(obj, fallback){ return (obj && obj.id != null) ? obj.id : (fallback != null ? fallback : ''); }
@@ -1994,6 +2129,9 @@
       document.getElementById('total').value = '';
       document.getElementById('comment').value = '';
       typeSel.selectedIndex = 0; cpSel.selectedIndex = 0; pvSel.selectedIndex = 0;
+      // The source account is deliberately NOT cleared: the next entry is usually on the
+      // same account, and it's the one field where re-picking every time is pure friction.
+      syncAccountFields();   // no type → not a transfer → the destination cell goes away
       // No type selected → no categories. Empty the list, not just the selection.
       CATS = []; fillSelect(catSel, CATS);
       if (window.AppUI) AppUI.refreshAll();
@@ -2010,12 +2148,6 @@
       formSubtitle.textContent = t(formSubtitle.dataset.i18n);
       createBtn.textContent    = t(createBtn.dataset.i18n);
       cancelEditBtn.style.display = editing ? '' : 'none';
-      // Saving files the row under whatever the picker shows, so name that account here —
-      // otherwise switching the picker mid-edit would move the transaction invisibly.
-      if (editing){
-        const target = accById(activeAcc || editingAccId);
-        if (target) formSubtitle.textContent += ' · ' + t('field.account') + ': ' + App.pickName(target);
-      }
     }
 
     async function startEdit(id){
@@ -2036,9 +2168,12 @@
       // rather than leaving whatever the previous edit selected.
       const pvId = refId(tx.provider, tx.provider_id);
       if (pvId === '' || pvId == null) pvSel.selectedIndex = 0; else pvSel.value = String(pvId);
-      // Keep the row on its own account (null for rows booked before accounts existed).
-      const accId = refId(tx.account, tx.account_id);
-      editingAccId = (accId === '' || accId == null) ? null : accId;
+      // Keep the row on its own accounts (blank for rows booked before accounts existed).
+      // Reveal the destination cell FIRST — the type is set by now, so a transfer gets its
+      // second select before we try to select in it.
+      syncAccountFields();
+      setAccValue(accSel, refId(tx.account_from, tx.account_from_id));
+      setAccValue(accToSel, refId(tx.account_to, tx.account_to_id));
       document.getElementById('comment').value = tx.comment || '';
       if (window.AppUI) AppUI.refreshAll();  // reflect pre-filled values in custom widgets
       setFormMode(true);
@@ -2047,7 +2182,7 @@
       views.new.scrollTop = 0;
     }
 
-    function cancelEdit(){ editingId = null; editingAccId = null; resetForm(); setFormMode(false); }
+    function cancelEdit(){ editingId = null; resetForm(); setFormMode(false); }
     cancelEditBtn.onclick = () => { cancelEdit(); showView('table'); };
 
     // Live, non-blocking guard on the two debt-closing types: paying a debt back shouldn't
@@ -2097,18 +2232,32 @@
 
     createBtn.onclick = async () => {
       const date = dateInput.value;
-      const total = parseFloat(document.getElementById('total').value);
+      // Rounded to 2dp before it goes on the wire: the API declares total as
+      // Decimal(max_digits=12, decimal_places=2) and 422s on anything more precise.
+      const rawTotal = parseFloat(document.getElementById('total').value);
+      const total = isNaN(rawTotal) ? rawTotal : Math.round(rawTotal * 100) / 100;
       const currency = document.getElementById('currency').value;
       const type_id = parseInt(typeSel.value, 10);
       const category_id = parseInt(catSel.value, 10);
       const counterparty_id = parseInt(cpSel.value, 10);
       const provider_id = parseInt(pvSel.value, 10) || null;   // optional
-      // The account always follows the top-bar picker — when creating AND when editing, so
-      // moving a transaction is just: open it, switch the picker, save. "All accounts" names
-      // no single account, so an edit made from there keeps the row where it already is.
-      const account_id = activeAcc ? Number(activeAcc)
-        : (editingAccId != null ? Number(editingAccId) : null);
+      // The accounts come from the form's own cells. A transfer leaves `account_from_id` and
+      // lands on `account_to_id`; every other type only books onto the one account, so the
+      // destination is explicitly nulled (an edit away from "transfer" must clear it).
+      const isTransfer = formTypeCode() === 'transfer';
+      const account_from_id = parseInt(accSel.value, 10) || null;
+      const account_to_id = isTransfer ? (parseInt(accToSel.value, 10) || null) : null;
       const comment = document.getElementById('comment').value.trim();
+
+      // Every transaction belongs to an account, so with none created yet there is nothing
+      // to pick: say what to do instead of naming a field that can't be filled, and open
+      // the place to do it (same destination as the picker's "Управление счетами").
+      if (!ACCS.length){
+        notify(t('alert.noaccounts'));
+        setTab = 'acc';
+        showView('settings'); views.settings.scrollTop = 0;
+        return;
+      }
 
       // Name exactly which required fields are missing, so the popup is specific
       // (e.g. only the counterparty → "Please fill in: Counterparty").
@@ -2118,13 +2267,14 @@
       if (!type_id) missing.push(t('field.type'));
       if (!category_id) missing.push(t('field.category'));
       if (!counterparty_id) missing.push(t('field.counterparty'));
+      if (!account_from_id) missing.push(t(isTransfer ? 'field.account.from' : 'field.account'));
+      if (isTransfer && !account_to_id) missing.push(t('field.account.to'));
       if (missing.length){ notify(t('alert.missing') + ' ' + missing.join(', ')); return; }
-      // The account comes from the top-bar picker, so "all accounts" can't book one — point
-      // at the picker instead. A ledger with no accounts at all still works (account stays null).
-      if (editingId == null && ACCS.length && !activeAcc){ notify(t('alert.pickaccount')); return; }
+      // Money can't move from an account to itself (both ends are set by now).
+      if (isTransfer && account_from_id === account_to_id){ notify(t('alert.sameaccount')); return; }
       if (!App.configured){ notify(t('hint.config')); return; }
 
-      const payload = { occured_at: date, total, currency, type_id, category_id, counterparty_id, provider_id, account_id, comment };
+      const payload = { occured_at: date, total, currency, type_id, category_id, counterparty_id, provider_id, account_from_id, account_to_id, comment };
       createBtn.disabled = true;
       try {
         if (editingId != null){
@@ -2185,7 +2335,8 @@
           document.getElementById('accNew').value = '';
           document.getElementById('accNewBal').value = '';
         },
-        // First account ever → adopt it as the scope, so the form is usable without a detour.
+        // First account ever → look at it straight away; with only one account, "all
+        // accounts" would show the same rows under a vaguer name.
         onAdded: (created) => { if (ACCS.length === 1) setStoredAcc(String(created.id)); },
         // Scope pointed at the deleted one → fall back to the first left, or "all accounts".
         onRemoved: (id) => {
@@ -2193,6 +2344,33 @@
         },
         // The picker's label/balances and every account-scoped view follow account changes.
         after: () => { renderAccSwitch(); renderTable(); }
+      },
+      cat: {
+        maxLen:25,
+        listId:'catList', countId:'catCount', inputId:'catNew', addBtnId:'catAddBtn',
+        toggleId:'catAddToggle', formId:'catAddForm', searchId:'catSearch', searchWrapId:'catSearchWrap',
+        emptyKey:'set.cat.empty', addedKey:'set.cat.added', deletedKey:'set.cat.deleted',
+        confirmKey:'set.confirm.cat',
+        get: () => OWN_CATS, set: (v) => { OWN_CATS = v; },
+        // POST /category has no response_model, so it may not echo a usable row. When it
+        // doesn't, refetch instead of leaving the new category invisible until a reload —
+        // returning nothing then tells the engine the list is already up to date.
+        create: async (name) => {
+          const created = await App.createCategory(name);
+          if (created && created.id != null) return created;
+          OWN_CATS = (await App.getOwnCategories()) || [];
+          return null;
+        },
+        remove: (id) => App.deleteCategory(id),
+        rename: (id, name) => App.updateCategory(id, name),
+        meta: () => '',
+        clearForm: () => { document.getElementById('catNew').value = ''; },
+        // The transaction form's category list is type-scoped and fetched per type, so it
+        // can't be patched from here — refetch it for whatever type is currently chosen.
+        after: () => {
+          const typeId = parseInt(typeSel.value, 10) || 0;
+          if (typeId) loadCategoriesForType(typeId, true);
+        }
       },
       cp: {
         maxLen:30,
@@ -2225,10 +2403,12 @@
     const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
     const CLOSE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
 
-    let setTab = 'acc';                                // which section is on screen
-    const dictQuery = { acc:'', cp:'', pv:'' };        // per-section filter text
-    const dictEdit  = { acc:null, cp:null, pv:null };  // id of the row being renamed
-    const DICT_SEARCH_MIN = 10;                        // list length that earns a search box
+    let setTab = 'acc';                    // which section is on screen
+    // Per-section state, keyed off DICTS itself so adding a section can't forget one.
+    const dictQuery = {};                  // filter text
+    const dictEdit  = {};                  // id of the row being renamed
+    Object.keys(DICTS).forEach(k => { dictQuery[k] = ''; dictEdit[k] = null; });
+    const DICT_SEARCH_MIN = 10;            // list length that earns a search box
 
     function renderDict(key){
       const d = DICTS[key];
@@ -2285,6 +2465,11 @@
       tog.setAttribute('aria-expanded', show ? 'true' : 'false');
       if (show) document.getElementById(d.inputId).focus();
     }
+    // The server rejects a duplicate name with 409. Worth telling apart from a generic
+    // failure: categories collide against the seeded list too, which this client never
+    // sees, so a 409 is the only way it can learn the name was taken.
+    function isConflict(e){ return /\b409\b/.test((e && e.message) || ''); }
+
     // Case-insensitive duplicate guard. `exceptId` lets a rename keep its own name.
     function dictHasName(key, name, exceptId){
       const n = name.toLowerCase();
@@ -2314,7 +2499,7 @@
         if (d.after) d.after();
         haptic('success');
         showToast(t(d.addedKey));
-      } catch(e){ console.error(e); haptic('error'); showToast(t('toast.error')); }
+      } catch(e){ console.error(e); haptic('error'); showToast(t(isConflict(e) ? 'set.dup' : 'toast.error')); }
       finally { btn.disabled = false; document.getElementById(d.inputId).focus(); }
     }
 
@@ -2344,7 +2529,9 @@
         reconcileTable();
       } catch(e){
         // Leaves the row in edit mode with the typed text intact, so nothing is lost.
-        console.error(e); input.disabled = false; haptic('error'); showToast(t('set.rename.failed'));
+        console.error(e); input.disabled = false; haptic('error');
+        showToast(t(isConflict(e) ? 'set.dup' : 'set.rename.failed'));
+        input.focus();
       }
     }
 
@@ -2525,7 +2712,25 @@
       debt_take:'in',   debt_repay:'out',   // borrowing brings cash in, repaying takes it out
       lend_give:'out',  lend_back:'in'      // lending takes cash out, collecting brings it in
     };
-    function txCash(tx){ const c = typeCode(tx); return c ? TX_CASH[c] : 'out'; }
+    // …but that zero only holds for the ledger as a whole. Seen from ONE account a transfer
+    // is a real movement: out of the source, into the destination. `accId` is the account
+    // asking ('' / null = the whole ledger, where transfers cancel out as before).
+    function txCashFor(tx, accId){
+      const c = typeCode(tx);
+      if (c === 'transfer'){
+        // A transfer that names no destination (a row booked before the second account
+        // cell existed) says nothing about where the money went — leave it neutral, so
+        // balances read exactly as they did before both ends were recorded.
+        if (!accId || txToAccId(tx) == null) return '';
+        if (String(txAccId(tx)) === String(accId)) return 'out';
+        if (String(txToAccId(tx)) === String(accId)) return 'in';
+        return '';
+      }
+      return c ? TX_CASH[c] : 'out';
+    }
+    // The app-wide scope asks by default, so lists, sums and the dashboard all follow the
+    // account picker: transfers are signed inside one account and neutral across all of them.
+    function txCash(tx){ return txCashFor(tx, activeAcc); }
     // P&L statement classification — same rule as txPL, in the statement's own vocabulary.
     function pnlClass(tx){
       const pl = txPL(tx);
@@ -2549,6 +2754,9 @@
     function cfActivity(tx){
       const c = typeCode(tx);
       if (c === 'debt_take' || c === 'debt_repay' || c === 'lend_give' || c === 'lend_back') return 'fin';
+      // A transfer only shows up here when a single account is in scope (see txCashFor) —
+      // it's an internal movement, never operating income or cost.
+      if (c === 'transfer') return 'fin';
       const s = catStr(tx);
       if (catIsInvestment(tx) || /основны.{0,3}средств|fixed\s*asset/.test(s)) return 'inv';
       if (catIsDividend(tx)) return 'fin';
